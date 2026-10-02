@@ -216,3 +216,57 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ============================================================================
+# NHAMCS-TriageML - raw dataset protection
+# ----------------------------------------------------------------------------
+# The NHAMCS 2022 Emergency Department public-use file is NOT redistributed in
+# this repository. It must be obtained separately from the official CDC/NCHS
+# source; see data/README.md for the pinned identity and the expected local path.
+#
+#   file    ed2022-stata.dta
+#   size    37,720,094 bytes
+#   sha256  0E00CD5AEA4511CD619F7AF1E0DC2F6825F111B7C87D3EBBB1358410A4C881C2
+#
+# Expected identity above; do not trust it without recomputing the hash.
+# ============================================================================
+
+# Local dataset directories (data/README.md itself stays tracked)
+raw/
+data/raw/
+data/local/
+data/external/
+data/cache/
+
+# Survey / statistical data files, in any location
+*.dta
+*.dta.gz
+*.sas7bdat
+*.xpt
+*.xport
+*.sav
+*.rds
+*.rdata
+*.por
+# Official SAS/Stata dictionary + import programs shipped with the raw data
+*.dct
+*.do
+# Conservative: the official archive ed2022-stata.zip ships the raw .dta.
+# Narrow this if a legitimate archive ever needs to be tracked.
+*.zip
+
+# Local path configuration and secrets
+.env
+.env.*
+!.env.example
+data/local_config.json
+data/local_config.*.json
+
+# Derived binary artefacts (regenerate, do not commit)
+outputs/
+artifacts/
+*.feather
+*.parquet
+*.pkl
+*.pickle
+*.joblib
