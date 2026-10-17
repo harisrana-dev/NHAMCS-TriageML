@@ -27,7 +27,10 @@ Hospital identifiers are excluded by construction and enforced by
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pandas as pd
+from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -197,8 +200,27 @@ def eligibility_class_summary() -> pd.DataFrame:
 # --- The pipeline -------------------------------------------------------------
 
 
-def build_column_transformer() -> ColumnTransformer:
-    """Construct the three-block ColumnTransformer for the final feature set.
+def _select_block_columns(
+    block_columns: Sequence[str], selected: frozenset[str]
+) -> list[str]:
+    """Keep only register columns that remain in ``selected``, preserving order."""
+    return [column for column in block_columns if column in selected]
+
+
+def build_column_transformer(
+    columns: Sequence[str] | None = None,
+) -> ColumnTransformer:
+    """Construct the three-block ColumnTransformer for the feature set.
+
+    Parameters
+    ----------
+    columns:
+        Optional subset of :data:`FEATURES`. When ``None`` (the default), the
+        full approved register is used and Part 1 behaviour is unchanged.
+        A non-``None`` value must be a leakage-safe subset of the register;
+        :func:`leakage_checks` still runs on the selected columns. Blocks whose
+        columns are all removed remain present as empty transformers so the
+        output schema stays block-structured.
 
     Every learned parameter - imputation statistics, category vocabulary, rare
     category thresholds, scaling moments - is fitted inside ``Pipeline.fit`` on the
@@ -210,7 +232,17 @@ def build_column_transformer() -> ColumnTransformer:
     matrix. Publishing that register is itself a Part 1 deliverable, not an
     implementation detail.
     """
-    leakage_checks(FEATURES)
+    if columns is None:
+        selected_features: tuple[str, ...] = FEATURES
+    else:
+        selected_features = tuple(columns)
+    leakage_checks(selected_features)
+    selected = frozenset(selected_features)
+
+    numeric_columns = _select_block_columns(NUMERIC, selected)
+    flag_columns = _select_block_columns(BINARY_FLAGS, selected)
+    low_cardinality_columns = _select_block_columns(CATEGORICAL_LOW, selected)
+    high_cardinality_columns = _select_block_columns(CATEGORICAL_HIGH, selected)
 
     numeric_block = Pipeline(
         steps=[
@@ -269,7 +301,7 @@ def build_column_transformer() -> ColumnTransformer:
 
     return ColumnTransformer(
         transformers=[
-            ("numeric", numeric_block, list(NUMERIC)),
+            ("numeric", numeric_block, numeric_columns),
             # Binary method indicators pass through unscaled. They are not
             # measurements: standardising a 0/1 would rescale it to a
             # z-score and destroy its reading as a flag. They also must never be
@@ -277,32 +309,49 @@ def build_column_transformer() -> ColumnTransformer:
             # would otherwise be silently dropped by remainder="drop", which is
             # how the Doppler/palpated provenance of PULSE=998 and BPDIAS=998
             # would be lost.
-            ("method_flags", "passthrough", list(BINARY_FLAGS)),
-            ("categorical_low", low_cardinality_block, list(CATEGORICAL_LOW)),
-            ("categorical_high", high_cardinality_block, list(CATEGORICAL_HIGH)),
+            ("method_flags", "passthrough", flag_columns),
+            ("categorical_low", low_cardinality_block, low_cardinality_columns),
+            ("categorical_high", high_cardinality_block, high_cardinality_columns),
         ],
         remainder="drop",
         verbose_feature_names_out=True,
     )
 
 
-def preprocessing_only() -> Pipeline:
+def preprocessing_only(columns: Sequence[str] | None = None) -> Pipeline:
     """The fitted-able preprocessing stage, as a standalone Pipeline."""
-    return Pipeline(steps=[("preprocess", build_column_transformer())])
+    return Pipeline(steps=[("preprocess", build_column_transformer(columns))])
 
 
-def build_pipeline() -> Pipeline:
-    """Return the full Part 1 Pipeline.
+def build_pipeline(
+    estimator: BaseEstimator | str | None = None,
+    columns: Sequence[str] | None = None,
+) -> Pipeline:
+    """Return the full Part 1 Pipeline, optionally with a live estimator.
 
-    The final estimator is left as a named placeholder. Part 1's deliverable is
-    the leakage-free preprocessing design; a classifier belongs to Part 2. The
-    placeholder keeps the object a genuine ``Pipeline`` so its structure and fit
-    semantics can be inspected and tested now, and so Part 2 can attach an
-    estimator without restructuring anything.
+    Parameters
+    ----------
+    estimator:
+        When ``None`` (the default), the final step keeps the Part 1
+        ``"placeholder"`` string so the scaffold stays inspectable without a
+        classifier. Pass a live estimator instance to obtain a fittable
+        Part 2 pipeline. Each caller should pass a **fresh** estimator.
+    columns:
+        Optional feature subset forwarded to
+        :func:`build_column_transformer`. ``None`` keeps the full register.
+
+    The final estimator is left as a named placeholder by default. Part 1's
+    deliverable is the leakage-free preprocessing design; a classifier belongs
+    to Part 2. The placeholder keeps the object a genuine ``Pipeline`` so its
+    structure and fit semantics can be inspected and tested now, and so Part 2
+    can attach an estimator without restructuring anything.
     """
+    final_step: BaseEstimator | str = (
+        "placeholder" if estimator is None else estimator
+    )
     return Pipeline(
         steps=[
-            ("preprocess", build_column_transformer()),
-            ("estimator", "placeholder"),
+            ("preprocess", build_column_transformer(columns)),
+            ("estimator", final_step),
         ]
     )
