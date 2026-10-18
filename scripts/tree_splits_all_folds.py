@@ -1,0 +1,143 @@
+"""Trained-tree splits for every shared fold, both conditions (Issue #3).
+
+Same configuration as the main experiment, no tuning, no train-score fit.
+
+AI-assisted: drafted with Claude, reviewed and run by the author.
+"""
+
+import pandas as pd
+from sklearn.metrics import f1_score
+from sklearn.tree import export_text
+
+from src.data import dataset, target
+from src.evaluation import prepare_modelling_inputs
+from src.evaluation.data import (
+    FEATURE_CONDITIONS,
+    feature_columns_for,
+    select_features,
+)
+from src.evaluation.runner import build_estimator_pipeline
+from src.evaluation.splits import make_grouped_folds
+
+TOP_DEPTH = 3
+TOP_N = 10
+LABELS = [1, 2, 3, 4, 5]
+
+pd.set_option("display.width", 220)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_colwidth", 60)
+
+
+def describe_split(tree, names, node):
+    t = tree.tree_
+    if t.children_left[node] == -1:
+        return "(leaf)"
+    return f"{names[t.feature[node]]} <= {t.threshold[node]:.2f}"
+
+
+def main() -> None:
+    full = dataset.load_raw_dataset(verify=True, expect_shape=True)
+    population = target.select_modelling_population(full)
+    inputs = prepare_modelling_inputs(population)
+    folds = make_grouped_folds(
+        inputs.y, inputs.groups, n_splits=5, random_state=None
+    )
+
+    rows = []
+    top_features = {}
+    text_parts = []
+
+    for condition in FEATURE_CONDITIONS:
+        columns = feature_columns_for(condition)
+        X = select_features(inputs, condition)
+        for fold in folds:
+            pipe = build_estimator_pipeline(
+                "decision_tree_gini", columns=columns
+            )
+            pipe.fit(
+                X.iloc[fold.train_positions],
+                inputs.y.iloc[fold.train_positions],
+            )
+            tree = pipe.named_steps["estimator"]
+            names = list(pipe[:-1].get_feature_names_out())
+            t = tree.tree_
+
+            ranked = sorted(
+                zip(names, tree.feature_importances_), key=lambda p: -p[1]
+            )[:TOP_N]
+            top_features[(condition, fold.fold_id)] = [n for n, _ in ranked]
+
+            y_true = inputs.y.iloc[fold.test_positions]
+            y_pred = pipe.predict(X.iloc[fold.test_positions])
+            rows.append(
+                {
+                    "condition": condition,
+                    "fold": fold.fold_id,
+                    "n_train": int(fold.train_positions.size),
+                    "depth": int(tree.get_depth()),
+                    "leaves": int(tree.get_n_leaves()),
+                    "train_rows_per_leaf": round(
+                        fold.train_positions.size / tree.get_n_leaves(), 2
+                    ),
+                    "root_split": describe_split(tree, names, 0),
+                    "left_child": describe_split(
+                        tree, names, t.children_left[0]
+                    ),
+                    "right_child": describe_split(
+                        tree, names, t.children_right[0]
+                    ),
+                    "top1": ranked[0][0],
+                    "top1_importance": round(float(ranked[0][1]), 3),
+                    "heldout_macro_f1": round(
+                        f1_score(
+                            y_true, y_pred, labels=LABELS,
+                            average="macro", zero_division=0,
+                        ),
+                        4,
+                    ),
+                }
+            )
+            text_parts.append(
+                f"##### {condition} / fold {fold.fold_id} #####\n"
+                f"depth {tree.get_depth()} leaves {tree.get_n_leaves()}\n"
+                + export_text(tree, feature_names=names, max_depth=TOP_DEPTH)
+            )
+
+    table = pd.DataFrame(rows)
+    print("=== Tree structure per fold ===")
+    print(
+        table[
+            ["condition", "fold", "n_train", "depth", "leaves",
+             "train_rows_per_leaf", "heldout_macro_f1"]
+        ].to_string(index=False)
+    )
+    print("\n=== Root split and its two children per fold ===")
+    print(
+        table[
+            ["condition", "fold", "root_split", "left_child", "right_child"]
+        ].to_string(index=False)
+    )
+
+    for condition in FEATURE_CONDITIONS:
+        print(f"\n=== Top {TOP_N} importances per fold: {condition} ===")
+        sets = []
+        for fold in folds:
+            feats = top_features[(condition, fold.fold_id)]
+            sets.append(set(feats))
+            print(f"fold {fold.fold_id}: " + ", ".join(feats[:5]) + ", ...")
+        common = sorted(set.intersection(*sets))
+        print(f"in the top {TOP_N} of ALL 5 folds ({len(common)}):")
+        for name in common:
+            print("   ", name)
+
+    table.to_csv("docs/decision_tree_all_folds_tree_summary.csv", index=False)
+    with open("docs/decision_tree_all_folds_splits.txt", "w") as handle:
+        handle.write("\n\n".join(text_parts) + "\n")
+    print(
+        "\nsaved: docs/decision_tree_all_folds_tree_summary.csv, "
+        "docs/decision_tree_all_folds_splits.txt"
+    )
+
+
+if __name__ == "__main__":
+    main()

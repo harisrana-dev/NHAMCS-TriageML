@@ -150,55 +150,101 @@ RFV is retained under the disclosed assumption in the README: the released
 4-digit codes were assigned retrospectively by RTI. The `full` condition
 therefore carries that assumption, and `no_rfv` is the check that does not.
 
-## 7. Interpretability (fold 0 only)
+## 7. Interpretability (all five folds)
 
-Splits were taken from the tree trained on the training rows of fold 0
-(n_train 8167). Full text export: `docs/decision_tree_fold0_splits.txt`.
+One tree was fitted per fold and condition on that fold's training rows, with
+the configuration in section 2 (no tuning, no train-score fit). Script:
+`scripts/tree_splits_all_folds.py`. Outputs:
+`docs/decision_tree_all_folds_tree_summary.csv`,
+`docs/decision_tree_all_folds_splits.txt` (text export to depth 3 for every
+fold and condition) and `docs/decision_tree_fold0_splits.txt` (earlier
+fold-0-only run).
 
-| | full | no_rfv |
-|---|---|---|
-| Depth | 67 | 42 |
-| Leaves | 2460 | 2816 |
-| Average training rows per leaf (8167 / leaves) | about 3.3 | about 2.9 |
-| Root split | `rfv1_broad_category_1545` | `arrival_by_ambulance_1` |
-| Second level | `arrival_by_ambulance_1` (left), `temp_f` (right) | `missingindicator_bp_systolic` (left), `resp_rate` (right) |
+Tree structure per fold:
 
-Top Gini importances (fold 0):
+| Condition | Fold | n_train | Depth | Leaves | Train rows per leaf | Held-out macro-F1 |
+|---|---|---|---|---|---|---|
+| full | 0 | 8167 | 67 | 2460 | 3.32 | 0.3035 |
+| full | 1 | 8168 | 87 | 2454 | 3.33 | 0.2676 |
+| full | 2 | 8176 | 64 | 2493 | 3.28 | 0.2529 |
+| full | 3 | 8143 | 74 | 2462 | 3.31 | 0.2867 |
+| full | 4 | 8174 | 79 | 2495 | 3.28 | 0.2889 |
+| no_rfv | 0 | 8167 | 42 | 2816 | 2.90 | 0.2315 |
+| no_rfv | 1 | 8168 | 36 | 2788 | 2.93 | 0.2421 |
+| no_rfv | 2 | 8176 | 40 | 2772 | 2.95 | 0.2714 |
+| no_rfv | 3 | 8143 | 39 | 2813 | 2.89 | 0.2417 |
+| no_rfv | 4 | 8174 | 45 | 2781 | 2.94 | 0.2415 |
 
-- full: arrival_minutes 0.086, bp_systolic 0.082, pulse_bpm 0.076,
-  bp_diastolic 0.068, temp_f 0.064, resp_rate 0.037, spo2_pct 0.037,
-  rfv1_broad_category_1545 0.020, arrival_by_ambulance_1 0.017,
-  rfv1_broad_category_1050 0.012.
-- no_rfv: arrival_minutes 0.148, bp_diastolic 0.124, pulse_bpm 0.113,
-  bp_systolic 0.104, temp_f 0.096, spo2_pct 0.066, resp_rate 0.062,
-  visit_day_of_week_3 0.017, arrival_by_ambulance_1 0.016,
-  visit_day_of_week_4 0.015.
+- Depth ranges over 64 to 87 (full) and 36 to 45 (no_rfv). Leaf counts range
+  over 2454 to 2495 (full) and 2772 to 2816 (no_rfv). The no_rfv trees are
+  shallower but have more leaves.
+- Across these five folds there is no visible relationship between depth or
+  leaf count and held-out macro-F1 (for example fold 1 has the deepest full
+  tree and the second-lowest macro-F1; fold 2 has the shallowest full tree
+  and the lowest). This was not tested statistically.
 
-Reading these numbers:
+Root and first-level splits (thresholds are in standardized units; `amb_1` and
+`amb_2` are two one-hot columns of the same arrival-by-ambulance variable; we
+did not check whether they are exact complements):
 
-- Numeric thresholds in the export are in standardized units (the pipeline
-  scales numeric columns on the training fold), not in original units such as
-  breaths per minute.
+| Condition | Fold | Root | Left child | Right child |
+|---|---|---|---|---|
+| full | 0 | rfv1_broad_category_1545 | amb_1 | temp_f <= 1.99 |
+| full | 1 | rfv1_broad_category_1545 | amb_2 | resp_rate <= 0.30 |
+| full | 2 | rfv1_broad_category_1545 | amb_2 | resp_rate <= 0.33 |
+| full | 3 | rfv1_broad_category_1545 | amb_2 | resp_rate <= 0.33 |
+| full | 4 | rfv1_broad_category_1545 | amb_1 | resp_rate <= 0.49 |
+| no_rfv | 0 | amb_1 | missingindicator_bp_systolic <= 1.44 | resp_rate <= 0.12 |
+| no_rfv | 1 | amb_2 | bp_systolic <= -2.69 | bp_systolic <= -0.07 |
+| no_rfv | 2 | amb_1 | missingindicator_bp_systolic <= 1.64 | resp_rate <= 0.16 |
+| no_rfv | 3 | amb_2 | resp_rate <= 0.16 | missingindicator_bp_systolic <= 1.56 |
+| no_rfv | 4 | amb_1 | missingindicator_bp_systolic <= 1.52 | resp_rate <= 0.16 |
+
+- full: the root is the same column in all five folds. The left child is the
+  ambulance variable in all five. The right child is temp_f in fold 0 only
+  and resp_rate in folds 1 to 4.
+- no_rfv: the root is the ambulance variable in all five folds (amb_1 in
+  folds 0, 2, 4; amb_2 in folds 1, 3). Folds 0, 2 and 4 use the same two
+  child features (thresholds differ slightly); fold 3 uses the same two
+  features on opposite sides; fold 1 differs (bp_systolic on both sides). A
+  missingness indicator appears at the first level in 4 of 5 no_rfv folds; we
+  report it as an observation and give no explanation.
+- Agreement deeper than the first level was not examined; the text export
+  to depth 3 for every fold is in `docs/decision_tree_all_folds_splits.txt`.
+
+Gini importances:
+
+- In every fold of both conditions the top five columns are the same five
+  numeric ones (arrival_minutes, bp_systolic, bp_diastolic, pulse_bpm,
+  temp_f); only their order changes.
+- Columns in the top ten of all five folds: full has 8 (the seven numeric
+  columns and rfv1_broad_category_1545); no_rfv has 7 (all seven numeric
+  columns).
+- Fold 0 values: full arrival_minutes 0.086, bp_systolic 0.082, pulse_bpm
+  0.076, bp_diastolic 0.068, temp_f 0.064; no_rfv arrival_minutes 0.148,
+  bp_diastolic 0.124, pulse_bpm 0.113.
+
+Reading these results:
+
+- Numeric thresholds are in standardized units (the pipeline scales numeric
+  columns on the training fold), not in original units.
 - RFV is one-hot encoded, so its importance is spread over many columns and
-  each one looks small. In full, the seven numeric columns in the top ten sum
-  to about 0.45; in no_rfv they sum to about 0.71.
+  each one looks small.
 - Gini importance favours columns with many possible split points, such as
-  continuous measurements. These values should not be read as evidence that
-  vitals carry more information than RFV. The audit finds the vitals only
-  weakly associated with the target.
-- The tree splits on missingness indicators (`missingindicator_bp_systolic`,
-  `missingindicator_temp_f`). We report this as an observation and give no
-  explanation for it.
-- This is one tree from one fold. Other folds will differ.
-- A fully grown tree with thousands of leaves cannot be read as a rule set;
-  only the top levels are interpretable.
+  continuous measurements. It should not be read as evidence that vitals
+  carry more information than RFV. The audit finds the vitals only weakly
+  associated with the target.
+- Trees with thousands of leaves cannot be read as rule sets; only the top
+  levels are interpretable.
 
 ## 8. Overfitting
 
 What is observed:
 
-- The tree has no depth or leaf-size limit and ends with 2460 (full) and 2816
-  (no_rfv) leaves on 8167 training rows, about 3 training rows per leaf.
+- The trees have no depth or leaf-size limit. Across the five folds they
+  reach depth 64 to 87 and 2454 to 2495 leaves (full), and depth 36 to 45
+  and 2772 to 2816 leaves (no_rfv), on about 8,150 training rows each: about
+  3.3 (full) and 2.9 (no_rfv) training rows per leaf.
 - Held-out macro-F1 is 0.28 (full) and 0.25 (no_rfv), and held-out ROC-AUC is
   0.55 and 0.53.
 
@@ -218,7 +264,8 @@ would close this gap.
 - Weak signal: ROC-AUC is close to 0.5, and a single unpruned tree gives
   coarse probabilities, which also limits what ROC-AUC can show (a general
   property of unpruned trees, not tested separately here).
-- Interpretability results come from fold 0 only.
+- Split-level comparison covers the root and first level (top three levels
+  in the text export); agreement deeper in the trees was not examined.
 - Five folds, 26 to 31 test hospitals per fold: fold-to-fold variation is
   visible in the standard deviations and the differences between conditions
   are small relative to it.
@@ -232,10 +279,12 @@ From the repository root, with `data/local/ed2022-stata.dta` in place:
     python -m scripts.run_decision_tree      # summary, pooled, per-class, confusion
     python -m scripts.fold_metrics           # per-fold table and CSV
     python -m scripts.tree_splits            # fold 0 splits and importances
+    python -m scripts.tree_splits_all_folds  # all 5 folds, comparison
 
 Seed: `RANDOM_STATE = 42` (`src/config.py`).
 
 ## 11. Open items
 
-- Which fold the team wants for the trained-tree splits (fold 0 used here).
+- Trained-tree splits were produced for every shared fold and compared
+  (section 7).
 - Whether a diagnostic train-score fit is allowed (section 8).
