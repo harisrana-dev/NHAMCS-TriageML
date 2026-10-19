@@ -161,8 +161,7 @@ condition and fold. The held-out scores come from the evaluator's fold metrics.
 Outputs:
 `docs/decision_tree_all_folds_tree_summary.csv`,
 `docs/decision_tree_all_folds_splits.txt` (text export to depth 3 for every
-fold and condition) and `docs/decision_tree_fold0_splits.txt` (earlier
-fold-0-only run).
+fold and condition).
 
 Tree structure per fold:
 
@@ -282,7 +281,6 @@ From the repository root, with `data/local/ed2022-stata.dta` in place:
     python -m pytest tests/test_integration_real_data.py -m integration -q
     python -m scripts.run_decision_tree      # summary, pooled, per-class, confusion
     python -m scripts.fold_metrics           # per-fold table and CSV
-    python -m scripts.tree_splits           # fold 0 of the shared evaluator run
     python -m scripts.tree_splits_all_folds  # shared run, all folds' diagnostics
 
 Seed: `RANDOM_STATE = 42` (`src/config.py`).
