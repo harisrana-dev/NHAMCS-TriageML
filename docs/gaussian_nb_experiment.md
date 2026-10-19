@@ -2,7 +2,7 @@
 
 **Issue:** [Part 2: Add GaussianNB experiment and document assumptions](https://github.com/harisrana-dev/NHAMCS-TriageML/issues/2)
 **Branch:** `feat/fiza/issue-2-gaussian-nb`
-**Status:** executed on the pinned dataset through the shared Part 2 evaluator. Every number below was produced by `src.evaluation.runner.run_evaluation` on 2026-10-19; nothing is hand-computed, estimated, or carried over from another machine.
+**Status:** executed on the pinned dataset through the shared Part 2 evaluator. Every metric below was produced by `src.evaluation.runner.run_evaluation` on 2026-10-19. Counts and percentages derived from those evaluator outputs (for example `268 / 5,340 = 0.0502`, the 5,072 remainder, 3,077 class-1 predictions, and the class shares in the table below) were calculated manually from the reported tables and independently checked; nothing is estimated or carried over from another machine.
 
 ## Scope
 
@@ -147,12 +147,18 @@ independent observations. Feeding them to NB as if independent multiplies
 near-duplicate evidence, over-counting the complaint signal in the likelihood
 product.
 
-**Observation:** with the RFV columns included (`full`), the model never
-predicts class 3 with high confidence and recall on class 3 collapses to 0.0502
-(pooled): only 268 of 5,340 true class-3 rows are classified as class 3, with
-the other 5,072 spread across the remaining classes. Without RFV (`no_rfv`),
-the prediction mass collapses onto classes 4/5 and class 3 recall falls further
-to 0.0011 (6 of 5,340).
+**Observation:** with the RFV columns included (`full`), the model predicts
+class 3 only rarely — 431 of 10,207 out-of-fold predictions — and recall on
+class 3 collapses to 0.0502 (pooled): only 268 of 5,340 true class-3 rows are
+classified as class 3, with the other 5,072 spread across the remaining
+classes. The rare class-3 predictions are made confidently, not tentatively:
+the aligned out-of-fold posteriors from the same shared folds and pipelines
+show 430 of those 431 at ≥ 0.7 for class 3 (counted manually and checked
+against the confusion-matrix column). The problem is how seldom class 3 is
+chosen, not how confident the model is when it is chosen. Without RFV
+(`no_rfv`), the prediction mass collapses onto classes 4/5 — only 15 of 10,207
+predictions are class 3 — and class 3 recall falls further to 0.0011 (6 of
+5,340).
 
 **Hypothesis:** the conditional-independence violation weakens NB in both
 conditions — with RFV because duplicated complaint evidence dominates the
@@ -168,10 +174,14 @@ arrival time). The rest are discrete: 2 binary method flags (passthrough, 0/1),
 6 low-cardinality categoricals and 5 RFV categories, all **one-hot encoded**
 inside the fold pipeline. A Gaussian likelihood on a 0/1 one-hot column models a
 Bernoulli variable with a bell curve: the per-class "mean" is the conditional
-frequency, and the per-class "variance" shrinks towards the `var_smoothing`
-floor for near-deterministic columns. Because NB multiplies one likelihood term
-per column, the many one-hot columns contribute a large number of these
-mismatched terms.
+frequency, and the per-class "variance" for near-deterministic columns
+bottoms out at the `var_smoothing` floor. `var_smoothing` adds a small
+variance floor — scikit-learn sets `epsilon_ = var_smoothing × max var(X)`
+(1e-9 × the largest variance among the training-fold features) and adds it to
+every per-class variance — purely to stabilise the estimates numerically; it
+does not meaningfully broaden any distribution. Because NB multiplies one
+likelihood term per column, the many one-hot columns contribute a large number
+of these mismatched terms.
 
 **Observation:** hard-label accuracy is 0.1626 (`full`) and 0.1151 (`no_rfv`),
 while fold ROC-AUC is 0.5699 and 0.5960 — the ranking quality is modestly above
@@ -195,45 +205,54 @@ AUC-vs-accuracy gap but is not demonstrated by it.
   (`full`), 0.0011 (`no_rfv`).
 
 **Hypothesis:** with only ~110 class-1 rows per training fold, the Gaussian
-parameters for class 1 are estimated from very little data, and the smoothed
-variances make class-1 likelihood terms broad enough to win the argmax for many
-non-class-1 visits. The result is high recall at near-zero precision — the
-model flags "immediate" far too liberally. Any deployment reading of this
-behaviour would be a decision-threshold question, not something this experiment
-resolves; per-issue, no clinical inference is drawn from it.
+parameters for class 1 — means and class-specific variances alike — are
+estimated from very little data, so those variance estimates are noisy. Noisy
+class-specific variances making class-1 likelihood terms broad enough to win
+the argmax for many non-class-1 visits is a possible explanation, not a proven
+cause; the `var_smoothing` floor itself is far too small (1e-9 × the largest
+feature variance) to broaden them on its own. The result is high recall at
+near-zero precision — the model flags "immediate" far too liberally. Any
+deployment reading of this behaviour would be a decision-threshold question,
+not something this experiment resolves; per-issue, no clinical inference is
+drawn from it.
 
 ### 4. `full` vs `no_rfv` sensitivity (no condition assumed to win)
 
 **Observations:**
 - Hard-label metrics favour `full` and are stable there: macro-F1 0.1585 ±
   0.0069 vs 0.0987 ± 0.0507 (`no_rfv`); pooled macro-F1 0.1585 vs 0.1106.
-  `no_rfv` is unstable — folds 0 and 4 collapse to  macro-F1 0.0543 and 0.0371,
+  `no_rfv` is unstable — folds 0 and 4 collapse to macro-F1 0.0543 and 0.0371,
   and in those runs entire classes receive zero recall (class 3 in folds 0 and
   2; class 4 in fold 4).
 - Fold ROC-AUC does **not** favour `full`: 0.5699 ± 0.0142 vs 0.5960 ± 0.0130.
-  The `no_rfv` ranking is modestly better in all five folds, even in the folds
-  where its argmax predictions collapse.
-- `no_rfv` prediction behaviour is bimodal across folds (macro-F1 range
-  0.0371–0.1566), `full` is not (0.1499–0.1678).
+  The five paired fold differences (`full` − `no_rfv`) are −0.0235, −0.0366,
+  −0.0515, −0.0190 and −0.0003: the `no_rfv` ranking is better in all five
+  folds, but fold 4 is a near-tie (0.5846 vs 0.5849), and the advantage holds
+  even in the folds where its argmax predictions collapse.
+- `no_rfv` prediction behaviour swings widely across folds (macro-F1 range
+  0.0371–0.1566) while `full` stays in a narrow band (0.1499–0.1678).
 
 **Hypotheses (distinguished from the observations above):** the RFV columns
 appear to supply most of the *decision-level* signal that keeps NB's argmax
 stable across hospital groups, while their independent-counting inflation may
 slightly *hurt* probability ranking — a possible mechanism for the reversed
-ROC-AUC ordering. The AUC difference (~0.026) is small relative to fold
-variation and was not tested for significance; it should be read as a
-sensitivity signal, not a conclusion. Neither condition is assumed to be the
-"correct" one; the comparison shows the RFV assumption documented in Part 1 is
-consequential for this model class in both directions.
+ROC-AUC ordering. The mean AUC gap is 0.026, and the five paired fold
+differences range from 0.0003 to 0.0515 in `no_rfv`'s favour. No statistical
+test was run on them, so no significance is claimed in either direction; the
+gap should be read as a sensitivity signal, not a conclusion. Neither
+condition is assumed to be the "correct" one; the comparison shows the RFV
+assumption documented in Part 1 is consequential for this model class in both
+directions.
 
 ### 5. Reproducibility notes for Issue #5 integration
 
 - Folds are shared across models and conditions (`random_state=42`,
   `HOSPCODE` groups), so these numbers are directly comparable with the other
   Part 2 model experiments run through the same evaluator.
-- The evaluator refuses to report a single fold as the result; every figure
-  above is fold-mean ± sample std (`ddof=1`) and/or pooled OOF over all 10,207
-  rows.
+- The evaluator returns per-fold metrics, fold-mean ± sample std (`ddof=1`) and
+  pooled OOF together — it does not designate any single fold as *the* result.
+  Every headline figure above is the fold mean ± sample std (`ddof=1`) and/or
+  pooled OOF over all 10,207 rows.
 - Runtime of `run_evaluation(inputs, model_ids=["gaussian_nb"])` on the
   recorded environment: ~3 s after data load; data load + verification ~10 s.
 
