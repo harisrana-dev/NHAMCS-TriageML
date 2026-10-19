@@ -17,6 +17,7 @@ No tuning experiment was run.
 |---|---|
 | Model id | `decision_tree_gini` (factory in `src/evaluation/runner.py`) |
 | Estimator | `DecisionTreeClassifier(criterion="gini", random_state=42)`; all other parameters are sklearn defaults, so the tree grows without a depth limit |
+| scikit-learn | 1.9.1 — exact pin in `requirements.txt`; fold assignments are version-dependent (see section 10) |
 | Conditions | `full` and `no_rfv` (`FEATURE_CONDITIONS` in `src/evaluation/data.py`) |
 | Folds | 5 grouped folds on `HOSPCODE` from `make_grouped_folds`, default arguments, generated once and reused |
 | Preprocessing | Shared `ColumnTransformer` pipeline, refitted on the training rows of every fold |
@@ -125,7 +126,7 @@ Rare classes:
   within what noise can produce, so we do not rank the two conditions on
   class 1.
 - Class 5: 15 (full) and 13 (no_rfv) of 307 are found. Per-fold F1 stays
-  between 0.031 and 0.108 in every fold of both conditions.
+  between 0.030 and 0.108 in every fold of both conditions.
 - Most errors are to adjacent or near classes. In full, 76% of class-1 visits
   (106 of 139) are predicted as 2 or 3, and 84% of class-5 visits (258 of
   307) are predicted as 3 or 4.
@@ -186,9 +187,12 @@ Tree structure per fold:
   tree and the second-lowest macro-F1; fold 2 has the shallowest full tree
   and the lowest). This was not tested statistically.
 
-Root and first-level splits (thresholds are in standardized units; `amb_1` and
-`amb_2` are two one-hot columns of the same arrival-by-ambulance variable; we
-did not check whether they are exact complements):
+Root and first-level splits (thresholds are in standardized units). Names in
+this table are abbreviated for width; the legend below maps each displayed
+name to the exact transformed feature name used by the pipeline, with its raw
+NHAMCS source column. `amb_1` and `amb_2` are two one-hot columns of the same
+arrival-by-ambulance variable; we did not check whether they are exact
+complements:
 
 | Condition | Fold | Root | Left child | Right child |
 |---|---|---|---|---|
@@ -202,6 +206,27 @@ did not check whether they are exact complements):
 | no_rfv | 2 | amb_1 | missingindicator_bp_systolic <= 1.64 | resp_rate <= 0.16 |
 | no_rfv | 3 | amb_2 | resp_rate <= 0.16 | missingindicator_bp_systolic <= 1.56 |
 | no_rfv | 4 | amb_1 | missingindicator_bp_systolic <= 1.52 | resp_rate <= 0.16 |
+
+Feature-name legend — displayed abbreviation, exact transformed feature name,
+origin:
+
+| Displayed | Exact transformed feature name | Origin |
+|---|---|---|
+| `amb_1` | `categorical_low__arrival_by_ambulance_1` | one-hot level 1 of engineered column `arrival_by_ambulance` (raw `ARREMS`) |
+| `amb_2` | `categorical_low__arrival_by_ambulance_2` | one-hot level 2 of the same engineered column (raw `ARREMS`) |
+| `rfv1_broad_category_1545` | `categorical_high__rfv1_broad_category_1545` | one-hot level 1545 of engineered column `rfv1_broad_category` (raw `RFV13D`, first of the five 4-digit reason-for-visit slots) |
+| `temp_f` | `numeric__temp_f` | engineered `temp_f` (raw `TEMPF`, divided by 10) |
+| `resp_rate` | `numeric__resp_rate` | engineered `resp_rate` (raw `RESPR`) |
+| `bp_systolic` | `numeric__bp_systolic` | engineered `bp_systolic` (raw `BPSYS`) |
+| `missingindicator_bp_systolic` | `numeric__missingindicator_bp_systolic` | missingness indicator created inside each training fold by `SimpleImputer(add_indicator=True)` for `bp_systolic`; it has no raw source column of its own |
+
+The `numeric__`, `categorical_low__` and `categorical_high__` prefixes are the
+block names in `build_column_transformer` (`verbose_feature_names_out=True`,
+`src/preprocessing/features.py`). Transformed names are not raw NHAMCS
+columns; the raw sources are listed only to identify where each measurement or
+code comes from. The artifacts `docs/decision_tree_all_folds_tree_summary.csv`
+and `docs/decision_tree_all_folds_splits.txt` store the full transformed
+names, not the abbreviations used in the table above.
 
 - full: the root is the same column in all five folds. The left child is the
   ambulance variable in all five. The right child is temp_f in fold 0 only
@@ -284,6 +309,22 @@ From the repository root, with `data/local/ed2022-stata.dta` in place:
     python -m scripts.tree_splits_all_folds  # shared run, all folds' diagnostics
 
 Seed: `RANDOM_STATE = 42` (`src/config.py`).
+
+### Reproducibility environment
+
+The experiment uses `scikit-learn 1.9.1` (with pandas 2.3.3, NumPy 2.5.4,
+SciPy 1.18.1), pinned exactly in `requirements.txt` as `scikit-learn==1.9.1`.
+
+`StratifiedGroupKFold` fold assignments can differ between scikit-learn
+versions even when `shuffle=True` and `random_state=42` are unchanged, because
+the splitter is library code whose algorithm may change between releases; the
+seed fixes the randomness within one implementation, not across versions. The
+fold-level results above — fold sizes, per-fold metrics, and the fitted trees'
+splits — should therefore be read against the pinned version: re-running under
+a different scikit-learn version may produce different folds and different
+metrics from the same seed. The pin removes that source of variation for the
+project; it does not by itself guarantee byte-identical results across
+operating systems, Python versions, or numerical-library builds.
 
 ## 11. Open items
 
