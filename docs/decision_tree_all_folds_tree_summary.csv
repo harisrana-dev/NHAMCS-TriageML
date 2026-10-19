@@ -1,11 +1,11 @@
 condition,fold,n_train,depth,leaves,train_rows_per_leaf,root_split,left_child,right_child,top1,top1_importance,heldout_macro_f1
-full,0,8167,67,2460,3.32,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__temp_f <= 1.99,numeric__arrival_minutes,0.086,0.3035
-full,1,8168,87,2454,3.33,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.30,numeric__arrival_minutes,0.094,0.2676
-full,2,8176,64,2493,3.28,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.33,numeric__arrival_minutes,0.086,0.2529
-full,3,8143,74,2462,3.31,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.33,numeric__pulse_bpm,0.08,0.2867
-full,4,8174,79,2495,3.28,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__resp_rate <= 0.49,numeric__arrival_minutes,0.088,0.2889
-no_rfv,0,8167,42,2816,2.9,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.44,numeric__resp_rate <= 0.12,numeric__arrival_minutes,0.148,0.2315
-no_rfv,1,8168,36,2788,2.93,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__bp_systolic <= -2.69,numeric__bp_systolic <= -0.07,numeric__arrival_minutes,0.15,0.2421
-no_rfv,2,8176,40,2772,2.95,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.64,numeric__resp_rate <= 0.16,numeric__arrival_minutes,0.144,0.2714
-no_rfv,3,8143,39,2813,2.89,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.16,numeric__missingindicator_bp_systolic <= 1.56,numeric__arrival_minutes,0.154,0.2417
-no_rfv,4,8174,45,2781,2.94,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.52,numeric__resp_rate <= 0.16,numeric__arrival_minutes,0.154,0.2415
+full,0,8167,67,2460,3.32,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__temp_f <= 1.99,numeric__arrival_minutes,0.086,0.3034735949792529
+full,1,8168,87,2454,3.33,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.30,numeric__arrival_minutes,0.094,0.26763381563014854
+full,2,8176,64,2493,3.28,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.33,numeric__arrival_minutes,0.086,0.25291576988638936
+full,3,8143,74,2462,3.31,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.33,numeric__pulse_bpm,0.08,0.28671253531657204
+full,4,8174,79,2495,3.28,categorical_high__rfv1_broad_category_1545 <= 0.50,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__resp_rate <= 0.49,numeric__arrival_minutes,0.088,0.28887287046969046
+no_rfv,0,8167,42,2816,2.9,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.44,numeric__resp_rate <= 0.12,numeric__arrival_minutes,0.148,0.23147800554914388
+no_rfv,1,8168,36,2788,2.93,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__bp_systolic <= -2.69,numeric__bp_systolic <= -0.07,numeric__arrival_minutes,0.15,0.24210452541490501
+no_rfv,2,8176,40,2772,2.95,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.64,numeric__resp_rate <= 0.16,numeric__arrival_minutes,0.144,0.2714131730758955
+no_rfv,3,8143,39,2813,2.89,categorical_low__arrival_by_ambulance_2 <= 0.50,numeric__resp_rate <= 0.16,numeric__missingindicator_bp_systolic <= 1.56,numeric__arrival_minutes,0.154,0.24167316422712837
+no_rfv,4,8174,45,2781,2.94,categorical_low__arrival_by_ambulance_1 <= 0.50,numeric__missingindicator_bp_systolic <= 1.52,numeric__resp_rate <= 0.16,numeric__arrival_minutes,0.154,0.2414872068775374

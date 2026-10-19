@@ -99,6 +99,9 @@ class EvaluationResult:
     folds: list[GroupedFold] = field(repr=False)
     diagnostics: pd.DataFrame
     feature_columns: dict[str, tuple[str, ...]]
+    fitted_pipelines: dict[tuple[str, str, int], Pipeline] = field(
+        default_factory=dict, repr=False
+    )
 
     def summary_for(self, model: str, condition: str) -> pd.Series:
         match = self.summary[
@@ -146,11 +149,14 @@ def run_evaluation(
     conditions: Iterable[str] | None = None,
     n_splits: int = 5,
     random_state: int | None = None,
+    retain_fitted_pipelines: bool = False,
 ) -> EvaluationResult:
     """Evaluate every model-condition pair on the same grouped folds.
 
     Splits are generated **once** and reused. Preprocessing and estimators are
-    refitted on each training fold only.
+    refitted on each training fold only. Set ``retain_fitted_pipelines`` when
+    fitted model diagnostics are needed; pipelines are keyed by
+    ``(model_id, condition, fold_id)`` and are omitted by default.
     """
     model_ids = tuple(model_ids)
     if conditions is None:
@@ -182,6 +188,7 @@ def run_evaluation(
     oof_frames: list[pd.DataFrame] = []
     confusion: dict[tuple[str, str], pd.DataFrame] = {}
     pooled_rows: list[dict[str, Any]] = []
+    fitted_pipelines: dict[tuple[str, str, int], Pipeline] = {}
 
     for condition in conditions:
         X_condition = select_features(inputs, condition)
@@ -201,6 +208,8 @@ def run_evaluation(
 
                 pipeline = build_estimator_pipeline(model_id, columns=columns)
                 pipeline.fit(X_train, y_train)
+                if retain_fitted_pipelines:
+                    fitted_pipelines[(model_id, condition, fold.fold_id)] = pipeline
 
                 y_pred = pipeline.predict(X_test)
                 proba_aligned = None
@@ -318,6 +327,7 @@ def run_evaluation(
         folds=folds,
         diagnostics=fold_diagnostics(folds),
         feature_columns=condition_columns,
+        fitted_pipelines=fitted_pipelines,
     )
 
 

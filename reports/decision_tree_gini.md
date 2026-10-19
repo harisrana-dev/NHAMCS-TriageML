@@ -24,6 +24,8 @@ result = run_evaluation(inputs, model_ids=["decision_tree_gini"])
 print(result.summary.to_string(index=False))
 print(result.fold_metrics.to_string(index=False))
 print(result.per_class_metrics.to_string(index=False))
+print(result.summary_for("decision_tree_gini", "full"))
+print(result.summary_for("decision_tree_gini", "no_rfv"))
 print(result.confusion_matrices[("decision_tree_gini", "full")])
 print(result.confusion_matrices[("decision_tree_gini", "no_rfv")])
 print(result.pooled_oof_metrics.to_string(index=False))
@@ -42,8 +44,9 @@ It loaded as 16,025 rows × 913 columns. The modelling cohort had 10,207 visits
 from 147 hospitals, with `IMMEDR` counts 1: 139, 2: 1,595, 3: 5,340, 4: 2,826,
 and 5: 307.
 
-Validation: `python -m pytest -q` — **49 passed**, including the real-data
-integration checks.
+Validation on this branch: `python -m pytest -q` — **55 passed**. With
+`NHAMCS_DATA_PATH` set to the repository-root dataset,
+`python -m pytest -m integration -q` — **3 passed, 52 deselected**.
 
 ## Cross-validation summary
 
@@ -72,6 +75,12 @@ available for all five folds in each condition.
 
 The evaluator reported no unavailable ROC-AUC folds; the reason field is empty
 for each.
+
+Per-fold precision, recall, and F1 for each of classes 1–5 are reported in
+`docs/decision_tree_fold_metrics.csv`, generated from
+`result.fold_metrics`/`result.per_class_metrics` by
+`python -m scripts.fold_metrics`. ROC-AUC availability and reason are included
+for each fold.
 
 ## Pooled out-of-fold results
 
@@ -139,8 +148,8 @@ Rows are true `IMMEDR`; columns are predicted `IMMEDR`, in class order 1–5.
 - A decision tree can be represented as a set of sequential feature tests and
   terminal class decisions, making its decision mechanism more directly
   expressible as rules than GaussianNB's class-conditional probability model;
-  the Dummy baseline has no learned feature rules. The shared evaluator returns
-  predictions and metrics, but does not retain fitted trees, tree paths, or
-  feature importances. Therefore this run does not support claims about which
-  specific features were used or what specific rules a fold learned. No separate
-  model fit or tuning was added to manufacture such claims.
+  the Dummy baseline has no learned feature rules. For the observed fold-level
+  rules and feature importances, `scripts.tree_splits_all_folds` reads the exact
+  fitted pipelines retained by the shared evaluator; it does not regenerate
+  folds or refit trees. The trees are large (depth 64–87 in `full` and 36–45 in
+  `no_rfv`), so only their upper split levels are readily interpretable.

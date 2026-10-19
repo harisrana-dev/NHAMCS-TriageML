@@ -1,4 +1,7 @@
-"""Print trained-tree splits for Issue #3 (one shared fold).
+"""Print fold-0 tree splits from the shared evaluator run (Issue #3).
+
+The pipelines are retained from ``run_evaluation``; no additional folds or
+tree fits are created here.
 
 AI-assisted: drafted with Claude, reviewed and run by the author.
 """
@@ -7,13 +10,8 @@ from sklearn.tree import export_text
 
 from src.data import dataset, target
 from src.evaluation import prepare_modelling_inputs
-from src.evaluation.data import (
-    FEATURE_CONDITIONS,
-    feature_columns_for,
-    select_features,
-)
-from src.evaluation.runner import build_estimator_pipeline
-from src.evaluation.splits import make_grouped_folds
+from src.evaluation.data import FEATURE_CONDITIONS
+from src.evaluation.runner import run_evaluation
 
 FOLD_ID = 0
 TOP_DEPTH = 3
@@ -23,10 +21,15 @@ def main() -> None:
     full = dataset.load_raw_dataset(verify=True, expect_shape=True)
     population = target.select_modelling_population(full)
     inputs = prepare_modelling_inputs(population)
-    folds = make_grouped_folds(
-        inputs.y, inputs.groups, n_splits=5, random_state=None
+    result = run_evaluation(
+        inputs,
+        model_ids=("decision_tree_gini",),
+        retain_fitted_pipelines=True,
     )
-    fold = folds[FOLD_ID]
+    fold = next((fold for fold in result.folds if fold.fold_id == FOLD_ID), None)
+    if fold is None:
+        raise ValueError(f"Fold {FOLD_ID} is not present in the evaluator result.")
+
     print(
         "fold", fold.fold_id,
         "n_train", fold.train_positions.size,
@@ -34,12 +37,9 @@ def main() -> None:
     )
 
     for condition in FEATURE_CONDITIONS:
-        columns = feature_columns_for(condition)
-        X = select_features(inputs, condition)
-        pipe = build_estimator_pipeline("decision_tree_gini", columns=columns)
-        pipe.fit(
-            X.iloc[fold.train_positions], inputs.y.iloc[fold.train_positions]
-        )
+        pipe = result.fitted_pipelines[
+            ("decision_tree_gini", condition, fold.fold_id)
+        ]
         tree = pipe.named_steps["estimator"]
         names = list(pipe[:-1].get_feature_names_out())
 

@@ -42,9 +42,13 @@ def main() -> None:
 
     main_cols = [
         "condition", "fold", "n_test", "macro_f1", "accuracy",
-        "balanced_accuracy", "roc_auc",
+        "balanced_accuracy", "roc_auc", "roc_auc_available", "roc_auc_reason",
     ]
-    class_cols = [f"f1_{label}" for label in LABELS]
+    class_cols = [
+        f"{metric}_{label}"
+        for label in LABELS
+        for metric in ("precision", "recall", "f1")
+    ]
     table = result.fold_metrics[main_cols + class_cols].merge(
         extra, on=["condition", "fold"]
     )
@@ -60,7 +64,7 @@ def main() -> None:
     ]
     print("=== Per-fold metrics ===")
     print(table[first].round(4).to_string(index=False))
-    print("\n=== Per-fold per-class F1 ===")
+    print("\n=== Per-fold per-class precision, recall, and F1 ===")
     print(
         table[["condition", "fold"] + class_cols].round(4).to_string(index=False)
     )

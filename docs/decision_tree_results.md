@@ -152,9 +152,13 @@ therefore carries that assumption, and `no_rfv` is the check that does not.
 
 ## 7. Interpretability (all five folds)
 
-One tree was fitted per fold and condition on that fold's training rows, with
-the configuration in section 2 (no tuning, no train-score fit). Script:
-`scripts/tree_splits_all_folds.py`. Outputs:
+The fitted tree for each fold and condition is inspected from the pipeline
+retained by the shared `run_evaluation` call; no folds are regenerated and no
+trees are refitted for these diagnostics. Script:
+`scripts/tree_splits_all_folds.py` calls `run_evaluation` with
+`retain_fitted_pipelines=True`, then reads the fitted pipelines keyed by model,
+condition and fold. The held-out scores come from the evaluator's fold metrics.
+Outputs:
 `docs/decision_tree_all_folds_tree_summary.csv`,
 `docs/decision_tree_all_folds_splits.txt` (text export to depth 3 for every
 fold and condition) and `docs/decision_tree_fold0_splits.txt` (earlier
@@ -278,8 +282,8 @@ From the repository root, with `data/local/ed2022-stata.dta` in place:
     python -m pytest tests/test_integration_real_data.py -m integration -q
     python -m scripts.run_decision_tree      # summary, pooled, per-class, confusion
     python -m scripts.fold_metrics           # per-fold table and CSV
-    python -m scripts.tree_splits            # fold 0 splits and importances
-    python -m scripts.tree_splits_all_folds  # all 5 folds, comparison
+    python -m scripts.tree_splits           # fold 0 of the shared evaluator run
+    python -m scripts.tree_splits_all_folds  # shared run, all folds' diagnostics
 
 Seed: `RANDOM_STATE = 42` (`src/config.py`).
 

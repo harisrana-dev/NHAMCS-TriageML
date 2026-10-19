@@ -1,27 +1,21 @@
-"""Trained-tree splits for every shared fold, both conditions (Issue #3).
+"""Summarize fitted Gini trees from the shared evaluator run (Issue #3).
 
-Same configuration as the main experiment, no tuning, no train-score fit.
+This script retains and inspects the pipelines fitted by ``run_evaluation``;
+it does not generate folds or fit a second set of trees.
 
 AI-assisted: drafted with Claude, reviewed and run by the author.
 """
 
 import pandas as pd
-from sklearn.metrics import f1_score
 from sklearn.tree import export_text
 
 from src.data import dataset, target
 from src.evaluation import prepare_modelling_inputs
-from src.evaluation.data import (
-    FEATURE_CONDITIONS,
-    feature_columns_for,
-    select_features,
-)
-from src.evaluation.runner import build_estimator_pipeline
-from src.evaluation.splits import make_grouped_folds
+from src.evaluation.data import FEATURE_CONDITIONS
+from src.evaluation.runner import run_evaluation
 
 TOP_DEPTH = 3
 TOP_N = 10
-LABELS = [1, 2, 3, 4, 5]
 
 pd.set_option("display.width", 220)
 pd.set_option("display.max_columns", None)
@@ -39,25 +33,21 @@ def main() -> None:
     full = dataset.load_raw_dataset(verify=True, expect_shape=True)
     population = target.select_modelling_population(full)
     inputs = prepare_modelling_inputs(population)
-    folds = make_grouped_folds(
-        inputs.y, inputs.groups, n_splits=5, random_state=None
+    result = run_evaluation(
+        inputs,
+        model_ids=("decision_tree_gini",),
+        retain_fitted_pipelines=True,
     )
-
+    folds = result.folds
     rows = []
     top_features = {}
     text_parts = []
 
     for condition in FEATURE_CONDITIONS:
-        columns = feature_columns_for(condition)
-        X = select_features(inputs, condition)
         for fold in folds:
-            pipe = build_estimator_pipeline(
-                "decision_tree_gini", columns=columns
-            )
-            pipe.fit(
-                X.iloc[fold.train_positions],
-                inputs.y.iloc[fold.train_positions],
-            )
+            pipe = result.fitted_pipelines[
+                ("decision_tree_gini", condition, fold.fold_id)
+            ]
             tree = pipe.named_steps["estimator"]
             names = list(pipe[:-1].get_feature_names_out())
             t = tree.tree_
@@ -67,8 +57,18 @@ def main() -> None:
             )[:TOP_N]
             top_features[(condition, fold.fold_id)] = [n for n, _ in ranked]
 
-            y_true = inputs.y.iloc[fold.test_positions]
-            y_pred = pipe.predict(X.iloc[fold.test_positions])
+            fold_metric = result.fold_metrics.loc[
+                (result.fold_metrics["model"] == "decision_tree_gini")
+                & (result.fold_metrics["condition"] == condition)
+                & (result.fold_metrics["fold"] == fold.fold_id),
+                "macro_f1",
+            ]
+            if len(fold_metric) != 1:
+                raise RuntimeError(
+                    f"Expected one evaluator metric row for {condition}/"
+                    f"fold {fold.fold_id}, got {len(fold_metric)}."
+                )
+
             rows.append(
                 {
                     "condition": condition,
@@ -88,13 +88,7 @@ def main() -> None:
                     ),
                     "top1": ranked[0][0],
                     "top1_importance": round(float(ranked[0][1]), 3),
-                    "heldout_macro_f1": round(
-                        f1_score(
-                            y_true, y_pred, labels=LABELS,
-                            average="macro", zero_division=0,
-                        ),
-                        4,
-                    ),
+                    "heldout_macro_f1": float(fold_metric.iloc[0]),
                 }
             )
             text_parts.append(
