@@ -121,6 +121,7 @@ def test_result_schema_and_exact_once_oof(synthetic_inputs) -> None:
         conditions=("full", "no_rfv"),
         n_splits=5,
     )
+    assert result.fitted_pipelines == {}
     expected_pairs = {(m, c) for m in MODEL_IDS for c in ("full", "no_rfv")}
     pairs = set(zip(result.fold_metrics["model"], result.fold_metrics["condition"]))
     assert pairs == expected_pairs
@@ -150,6 +151,30 @@ def test_result_schema_and_exact_once_oof(synthetic_inputs) -> None:
     assert set(result.confusion_matrices) == expected_pairs
     for frame in result.confusion_matrices.values():
         assert frame.shape == (5, 5)
+
+
+def test_retained_pipelines_are_the_evaluated_fold_models(synthetic_inputs) -> None:
+    result = run_evaluation(
+        synthetic_inputs,
+        model_ids=("decision_tree_gini",),
+        conditions=("full",),
+        n_splits=5,
+        retain_fitted_pipelines=True,
+    )
+
+    assert set(result.fitted_pipelines) == {
+        ("decision_tree_gini", "full", fold.fold_id) for fold in result.folds
+    }
+    oof = result.oof_predictions
+    for fold in result.folds:
+        pipeline = result.fitted_pipelines[
+            ("decision_tree_gini", "full", fold.fold_id)
+        ]
+        fold_predictions = pipeline.predict(
+            synthetic_inputs.X.iloc[fold.test_positions]
+        )
+        expected = oof.loc[oof["fold"] == fold.fold_id, "y_pred"].to_numpy()
+        np.testing.assert_array_equal(fold_predictions, expected)
 
 
 def test_dummy_roc_auc_n_valid_is_zero(synthetic_inputs) -> None:

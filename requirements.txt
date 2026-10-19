@@ -16,13 +16,20 @@
 # NOTE: matplotlib 3.11 is required, not optional. The four EDA figures are part
 # of the Part 1 deliverable, and the notebook asserts on the transformed array,
 # so a run without it fails loudly rather than producing a notebook with no plots.
+#
+# Part 2 note (Issue #3, PR #8): scikit-learn is pinned to exactly 1.9.1.
+# StratifiedGroupKFold fold assignments can differ between scikit-learn versions
+# even with shuffle=True and random_state=42 unchanged, so the Part 2 fold-level
+# results in docs/decision_tree_results.md were produced under 1.9.1 and should
+# be read against this pin. The Part 1 notebook outputs noted above were
+# verified under 1.7.0 and are unaffected.
 
 # --- Core data handling -----------------------------------------------------
 pandas>=2.3,<3          # observed 2.3.0  - read_stata for the .dta file
 numpy>=2.2,<3           # observed 2.2.6
 
 # --- Pipeline / validation --------------------------------------------------
-scikit-learn>=1.7,<2    # observed 1.7.0  - Pipeline, ColumnTransformer,
+scikit-learn==1.9.1     # pinned 1.9.1  - Pipeline, ColumnTransformer,
                          #                 SimpleImputer, OneHotEncoder,
                          #                 StratifiedGroupKFold (Part 2)
 scipy>=1.15,<2          # observed 1.15.3 - chi-square tests for the
