@@ -3,13 +3,19 @@
 Machine-learning study of emergency-department triage urgency using the 2022
 NHAMCS Emergency Department public-use dataset.
 
-> **Status: Assignment 1, Part 1 implemented and verified. No model trained.**
+> **Status: Part 1 complete; Part 2 models implemented, evaluated and
+> integrated. Parts 3–5 not started.**
 >
-> The official dataset is loaded and verified byte-for-byte, the target and the
-> final feature register are settled, and the leakage-free preprocessing pipeline
-> is implemented and executed. **No classifier has been fitted, no accuracy or
-> macro-F1 figure has been produced, and none is claimed.** Instructor approval of
-> the dataset is still outstanding.
+> Part 1 loads and verifies the official file byte-for-byte, settles the target
+> and feature register, and demonstrates the leakage-free preprocessing pipeline.
+> Part 2 trains three models (Dummy, GaussianNB, Gini Decision Tree) on one
+> shared set of five-fold hospital-grouped splits under the fixed protocol below,
+> and integrates the results into
+> `notebooks/01_assignment1_part1_eda_and_pipeline.ipynb` (sections P2.1–P2.12)
+> together with the Macro-F1 comparison figure. **Random Forest, AdaBoost,
+> XGBoost, Logistic Regression, nested hyperparameter tuning, the MLP, PCA and
+> K-means are not implemented — they are Part 3/4/5 work.** Instructor approval
+> of the dataset is still outstanding.
 
 ## Research question
 
@@ -112,16 +118,20 @@ NHAMCS-TriageML/
 ├── requirements.txt       # dependencies, with the versions observed locally
 ├── data/README.md         # how to obtain and verify the dataset — no data files
 ├── notebooks/
-│   └── 01_assignment1_part1_eda_and_pipeline.ipynb   # executed; 4 figures inline
+│   └── 01_assignment1_part1_eda_and_pipeline.ipynb   # executed; Part 1 + Part 2, 5 figures inline
 ├── src/
 │   ├── config.py          # dataset resolution, pinned identity, seed
 │   ├── data/              # integrity verification + target definition
 │   ├── preprocessing/     # sentinels, feature register, ColumnTransformer
-│   └── evaluation/        # reserved for Part 2 (grouped CV, metrics)
+│   └── evaluation/        # hospital-grouped evaluation framework (Part 2)
+├── scripts/               # reproducible experiment entry points (Part 2)
 ├── docs/
 │   ├── assignment1_proposal.md   # the one-page proposal
 │   ├── feature_register.md       # final 18 raw -> 20 engineered
-│   └── methodology.md            # why each decision was made
+│   ├── methodology.md            # why each decision was made
+│   ├── gaussian_nb_experiment.md # Part 2: GaussianNB results (Issue #2)
+│   ├── decision_tree_results.md  # Part 2: Decision Tree results (Issue #3)
+│   └── gini_hand_calculation.md  # Part 2: hand-worked Gini split (Issue #4)
 ├── reports/figures/       # committed figures backing the report
 └── audit/README.md        # pointer to the external forensic audit workspace
 ```
@@ -146,12 +156,30 @@ The forensic audit itself was performed in a separate workspace
    - an explicit argument to `config.resolve_dataset_path(...)`
    - the `NHAMCS_DATA_PATH` environment variable
    - a documented sibling location under `ML_Dataset_Audit\`
-4. Run the notebook top to bottom.
+4. Run the notebook top to bottom. It now contains Part 1 (sections 1–8) and
+   the Part 2 comparison (sections P2.1–P2.12).
 
 The loader refuses to proceed unless the file's size and SHA-256 match the
 pinned values, so a wrong or substituted dataset fails loudly instead of
 silently producing different numbers. `RANDOM_STATE = 42`. The dataset is
 read-only, excluded by `.gitignore`, and never committed.
+
+**Reproducing the Part 2 experiment** (from the repository root, with the
+dataset discoverable as above):
+
+```bash
+python -m pytest -q                  # full suite: 52 unit + 3 integration tests
+python -m pytest -m integration -q   # 3 real-dataset integration tests
+python -m scripts.run_decision_tree  # single-model run through the shared evaluator
+python -m scripts.fold_metrics       # per-fold table + CSV for the Decision Tree
+python -m scripts.generate_gini_hand_calculation   # regenerates docs/gini_hand_calculation.md
+```
+
+The full three-model comparison (3 models × 2 conditions × 5 folds) runs inside
+the notebook's Part 2 section through
+`src.evaluation.runner.run_evaluation(inputs)`; the same call backs the
+integration test. Fold assignments depend on the pinned `scikit-learn==1.9.1`;
+see `docs/decision_tree_results.md` §10 for why the pin matters.
 
 ## Preprocessing design
 
@@ -177,9 +205,36 @@ code in `PULSE` and `BPDIAS` but a real 99.8 °F reading in `TEMPF`; `AMBTRANSFE
 = -7` is structural, not missing; `RFV*D = 0` means "no complaint recorded", not
 missing. Nothing is clipped, winsorised, or deleted by an IQR or z-score rule.
 
+## Part 2: hospital-grouped model comparison
+
+Three untuned models — Dummy (`most_frequent`), `GaussianNB()` and
+`DecisionTreeClassifier(criterion="gini", random_state=42)` — are evaluated on
+**one shared set of five-fold `StratifiedGroupKFold` splits on `HOSPCODE`,
+seed 42**, in two feature conditions (`full`, 20 columns; `no_rfv`, 15 columns).
+Preprocessing is refitted inside each training fold only, train and test
+hospitals are disjoint in every fold, and the primary metric is **Macro-F1**
+(fold mean ± sample std), reported alongside pooled out-of-fold metrics over
+all 10,207 visits. Implementation: `src/evaluation/`; integration and write-up:
+notebook sections P2.1–P2.12.
+
+Headline results, `full` condition (fold mean ± std, scikit-learn 1.9.1):
+
+| Model | Macro-F1 | Accuracy | Note |
+|---|---|---|---|
+| Dummy (most frequent) | 0.1374 ± 0.0008 | 0.5232 ± 0.0045 | Majority-class floor by construction; ROC-AUC N/A by protocol |
+| GaussianNB | 0.1585 ± 0.0069 | 0.1626 ± 0.0074 | Class-3 recall 0.0502; strongly RFV-sensitive |
+| Decision Tree (Gini) | **0.2799 ± 0.0198** | 0.4627 ± 0.0075 | Accuracy below the 0.5232 majority-class floor |
+
+Removing RFV lowers tree Macro-F1 to 0.2456 ± 0.0151 and destabilises
+GaussianNB (0.0987 ± 0.0507). These are results on a documentation field under
+local triage protocols — **not clinical decision support**. Full evidence
+(per-fold, pooled, per-class, confusion matrices) and
+`reports/figures/fig05_part2_macro_f1_comparison.png` are produced by the
+notebook at run time.
+
 ## Figures
 
-All four are committed under `reports/figures/` and embedded in the notebook.
+All five are committed under `reports/figures/` and embedded in the notebook.
 
 | Figure | Shows |
 |---|---|
@@ -187,6 +242,7 @@ All four are committed under `reports/figures/` and embedded in the notebook.
 | `fig02_missingness.png` | Missingness by feature, and by target class |
 | `fig03_feature_relationships.png` | Acuity by arrival mode and by reason for visit |
 | `fig04_hospital_variation.png` | Hospital-to-hospital variation motivating grouped validation |
+| `fig05_part2_macro_f1_comparison.png` | Part 2 Macro-F1 by model and condition (fold mean ± std) |
 
 ## Git
 
@@ -195,12 +251,26 @@ All four are committed under `reports/figures/` and embedded in the notebook.
 | `main` | Stable. Reviewed work only. |
 | `dev` | Active development. All work happens here. |
 
-Raw data is excluded by `.gitignore` on both branches. **No commit, push, or
-branch change has been made for this work**; it sits uncommitted on `dev`.
+Raw data is excluded by `.gitignore` on both branches. Work is integrated into
+`dev` through reviewed pull requests; no one pushes directly to `dev`.
+
+Merged PR history on `dev`:
+
+| PR | Issue | Contribution |
+|---|---|---|
+| #6 | #1 | Shared hospital-grouped evaluation framework |
+| #8 | #3 | Gini Decision Tree experiment and report |
+| #9 | #4 | Hand-worked Gini split calculation |
+| #10 | #2 | GaussianNB experiment and report |
+
+PR #7 (an early Part 2 evaluation plan) was closed without merge: it predates
+the trained models and its status claims are superseded by the merged framework
+above.
 
 ## Status
 
-**Assignment 1, Part 1 — complete. Part 2 — not started.**
+**Assignment 1, Part 1 — complete. Part 2 — models, evaluation and integration
+complete. Parts 3–5 — not started.**
 
 | # | Item | Status |
 |---|---|---|
@@ -210,8 +280,12 @@ branch change has been made for this work**; it sits uncommitted on `dev`.
 | 4 | NCHS confirmation on redistribution | **Outstanding** — mitigated by git-ignoring the raw file |
 | 5 | Feature register | **Settled** — 18 raw → 20 engineered |
 | 6 | Leakage-free preprocessing pipeline | **Implemented and verified** |
-| 7 | Classifier, tuning, performance measurement | **Not started — Part 2** |
-| 8 | Hospital-grouped validation | **Not started — Part 2** |
+| 7 | Classifiers and performance measurement (Dummy, GaussianNB, Decision Tree) | **Implemented — Part 2; no hyperparameter tuning** |
+| 8 | Hospital-grouped validation (5 folds, seed 42, `HOSPCODE`) | **Implemented — Part 2** |
+| 9 | Part 2 comparison write-up, Macro-F1 figure, notebook integration | **Complete — notebook sections P2.1–P2.12** |
+| 10 | Part 3: nested tuning, RF/AdaBoost, XGBoost, elastic-net logistic regression | **Not started** |
+| 11 | Part 4: MLP, PCA/K-means, interpretability | **Not started** |
+| 12 | Part 5: final integrated notebook, report, presentation | **Not started** |
 
 ## Academic integrity
 
