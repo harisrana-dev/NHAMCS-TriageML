@@ -23,6 +23,7 @@ from sklearn.metrics import (
     balanced_accuracy_score,
     confusion_matrix,
     f1_score,
+    make_scorer,
     precision_recall_fscore_support,
     roc_auc_score,
 )
@@ -32,6 +33,16 @@ from src.evaluation.data import LABELS
 ZERO_DIVISION = 0
 #: Sentinel reason recorded when ROC-AUC is not applicable by protocol.
 ROC_AUC_PROTOCOL_NA = "N/A by protocol"
+
+
+def make_macro_f1_scorer():
+    """Fixed-label macro-F1 scorer for grouped inner-search selection."""
+    return make_scorer(
+        f1_score,
+        labels=list(LABELS),
+        average="macro",
+        zero_division=ZERO_DIVISION,
+    )
 
 
 def align_proba_columns(

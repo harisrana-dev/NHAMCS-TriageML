@@ -34,6 +34,7 @@ from src.evaluation.metrics import (
     compute_fold_metrics,
     confusion_frame,
     fold_roc_auc,
+    make_macro_f1_scorer,
     mean_std_summary,
 )
 from src.evaluation.runner import (
@@ -43,6 +44,18 @@ from src.evaluation.runner import (
     build_estimator_pipeline,
     make_estimator,
     run_evaluation,
+)
+from src.evaluation.nested import (
+    INVERSE_FREQUENCY_WEIGHT_POLICY,
+    NestedEvaluationResult,
+    NestedFoldResult,
+    NestedInnerFold,
+    NestedSpec,
+    WeightPolicy,
+    build_weighted_fit_params,
+    inverse_frequency_weights,
+    make_nested_inner_folds,
+    run_nested_evaluation,
 )
 from src.evaluation.splits import (
     GroupedFold,
@@ -76,4 +89,15 @@ __all__ = [
     "confusion_frame",
     "mean_std_summary",
     "ROC_AUC_PROTOCOL_NA",
+    "make_macro_f1_scorer",
+    "NestedEvaluationResult",
+    "NestedFoldResult",
+    "NestedInnerFold",
+    "NestedSpec",
+    "WeightPolicy",
+    "INVERSE_FREQUENCY_WEIGHT_POLICY",
+    "inverse_frequency_weights",
+    "make_nested_inner_folds",
+    "build_weighted_fit_params",
+    "run_nested_evaluation",
 ]
