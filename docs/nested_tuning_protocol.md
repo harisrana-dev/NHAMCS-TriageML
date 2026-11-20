@@ -56,9 +56,11 @@ functions. A caller may pass another scorer through the `scoring` argument.
 
 Candidates are generated with `sklearn.model_selection.ParameterGrid`. For each
 candidate, the mean inner score across the three inner folds is computed. The
-candidate with the highest mean wins; ties are broken by first candidate order,
-which makes selection deterministic. `np.argmax` provides this behaviour
-because `ParameterGrid` preserves the declared order.
+candidate with the highest mean wins; ties are broken deterministically by
+selecting the first candidate in the actual `ParameterGrid` iteration order.
+`np.argmax` returns the first maximum, so this tie-break follows the order in
+which `ParameterGrid` yields candidates, not necessarily the order in which
+dictionary keys were declared.
 
 The outer fit uses a fresh clone of the same preprocessing pipeline and the
 selected parameters. Its predictions contribute one row per held-out position
@@ -151,8 +153,14 @@ name is recorded in `best_params` and `diagnostics` for every run.
   the run with the outer fold, inner fold, and candidate identified. A finite
   numeric `error_score` is also accepted for deliberate robustness testing.
 - `n_outer_splits` and `n_inner_splits` must each be at least 2.
-- Unknown grid parameters, empty grids, invalid feature conditions, malformed
-  weights, and invalid split positions fail before any fit is attempted.
+- Static specification/configuration checks, such as unknown grid parameters,
+  empty grids, invalid feature conditions, invalid split counts, and disallowed
+  `search_n_jobs` values, run before fitting; supplied outer folds also receive
+  structural validation via `validate_folds()`. Partition-specific checks,
+  including malformed weights generated for a given fitting partition and
+  per-fold position/hospital checks encountered during execution, occur when
+  that partition or fold is processed. The harness does not transactionally
+  pre-validate every possible runtime input before the first fit.
 
 ## Scope
 
