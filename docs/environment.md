@@ -64,8 +64,10 @@ python -m pip install -r requirements-torch-cpu.txt # PyTorch CPU-only (Issue #1
 ```
 
 Install an optional manifest only when you need that model — not by default.
-`macOS`/`Linux` use `source .venv/bin/activate` for the virtual environment;
-everything else is identical.
+On Linux, activate with `source .venv/bin/activate`; the core commands are
+otherwise the same, though Linux is unverified here (see limitations). On
+**macOS** the core manifest is unaffected, but `requirements-torch-cpu.txt`
+does not apply — see "Portability limitations" below.
 
 ## Dataset path precedence
 
@@ -148,8 +150,18 @@ environments. XGBoost fits a synthetic 5-class task alongside scikit-learn
 - **Exact pins only for scikit-learn.** Other packages resolve within their
   ranges, so a later install may pick a newer in-range version than the record
   above.
-- **Torch wheels are platform-specific.** The manifest resolves CPU builds on
-  Windows/macOS/Linux x64 via the PyTorch CPU index; `+cpu` is required for the
-  local version segment.
-- **Windows 11 x64 is the tested platform.** Other platforms are expected to
-  work but are unverified here.
+- **Torch wheels are platform-specific, and this pin is not universal.**
+  `torch==2.15.0+cpu` resolves on **Windows x64** (verified here —
+  `torch-2.15.0+cpu-cp313-cp313-win_amd64.whl`) and on **Linux x86_64 /
+  aarch64** (the CPU index publishes `...+cpu-cp313-cp313-manylinux_2_28_x86_64.whl`;
+  not runtime-verified from this Windows machine). It does **not** resolve on
+  **macOS**, where the same index ships builds *without* the `+cpu` segment
+  (`torch-2.15.0-cp313-cp313-macosx_14_0_arm64.whl`), so `==2.15.0+cpu` matches
+  no macOS wheel. **`requirements-torch-cpu.txt` does not support macOS.**
+  macOS users must install PyTorch outside this manifest (PyPI publishes the
+  matching `torch-2.15.0-cp313-cp313-macosx_14_0_arm64.whl`, so
+  `python -m pip install torch` is the separate route) — that route is
+  **documented here but not verified** in this repository.
+- **Windows 11 x64 is the only runtime-tested platform.** The Linux and macOS
+  statements above are wheel-availability facts read from the package indexes,
+  not runtime verification.

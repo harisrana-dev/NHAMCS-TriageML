@@ -7,9 +7,13 @@
 #   requirements-xgboost.txt    XGBoost (Issue #13)
 #   requirements-torch-cpu.txt  PyTorch, CPU-only wheels (Issue #16)
 #
-# Supported Python: CPython 3.13.x. The reference/tested environment for every
-# result in this repository is Windows 11, CPython 3.13.5 x64 (docs/environment.md).
-# 3.13.5 is the tested reference patch release, not the only accepted one.
+# Supported Python: CPython 3.13.x. The current standardized reference
+# environment for the project is Windows 11, CPython 3.13.5 x64
+# (docs/environment.md); 3.13.5 is the tested reference patch release, not the
+# only accepted one. Historical experiment environments are legitimate records
+# and are retained as provenance where those results were produced — e.g.
+# CPython 3.12.10 in reports/decision_tree_gini.md and Python 3.14.2 in
+# docs/gaussian_nb_experiment.md. Neither is the current reference.
 #
 # Bounds follow one rule: lower bound = the version observed in the reference
 # environment; upper bound = the next major release, so a major-version bump
