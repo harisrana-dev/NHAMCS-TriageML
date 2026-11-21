@@ -300,7 +300,7 @@ experiment may claim:
 Before opening a PR, run from the repository root:
 
 ```bash
-python -m pytest -q -p no:cacheprovider          # all non-integration tests
+python -m pytest -m "not integration" -q -p no:cacheprovider  # non-integration tests (no dataset needed)
 python -m pytest -m integration -q               # dataset-backed checks (requires the NHAMCS file)
 ```
 
