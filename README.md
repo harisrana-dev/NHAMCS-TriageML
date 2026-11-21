@@ -114,9 +114,11 @@ Fall 2026, BSCS
 
 ```
 NHAMCS-TriageML/
-├── README.md              # this file
-├── requirements.txt       # dependencies, with the versions observed locally
-├── data/README.md         # how to obtain and verify the dataset — no data files
+├── README.md                    # this file
+├── requirements.txt             # core dependencies (the one authoritative manifest)
+├── requirements-xgboost.txt     # optional: XGBoost (Issue #13)
+├── requirements-torch-cpu.txt   # optional: PyTorch CPU-only wheels (Issue #16)
+├── data/README.md               # how to obtain and verify the dataset — no data files
 ├── notebooks/
 │   └── 01_assignment1_part1_eda_and_pipeline.ipynb   # executed; Part 1 + Part 2, 5 figures inline
 ├── src/
@@ -126,6 +128,7 @@ NHAMCS-TriageML/
 │   └── evaluation/        # hospital-grouped evaluation framework (Part 2)
 ├── scripts/               # reproducible experiment entry points (Part 2)
 ├── docs/
+│   ├── environment.md            # authoritative environment spec (Issue #23)
 │   ├── assignment1_proposal.md   # the one-page proposal
 │   ├── feature_register.md       # final 18 raw -> 20 engineered
 │   ├── methodology.md            # why each decision was made
@@ -149,12 +152,29 @@ The forensic audit itself was performed in a separate workspace
 
 ## Reproducibility
 
-1. `pip install -r requirements.txt`
+The authoritative environment guide is
+[`docs/environment.md`](docs/environment.md) — supported Python, core and
+optional installs, dataset path precedence, verification commands.
+
+1. Create a Python 3.13 virtual environment and install the core manifest:
+
+   ```powershell
+   py -3.13 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+   Model work that needs XGBoost or PyTorch adds
+   `requirements-xgboost.txt` / `requirements-torch-cpu.txt` on top (see
+   [`docs/environment.md`](docs/environment.md)).
 2. Obtain `ed2022-stata.dta` from the official CDC/NCHS source (see
    [`data/README.md`](data/README.md)).
 3. Point the code at it — no hard-coded absolute path. In order of precedence:
    - an explicit argument to `config.resolve_dataset_path(...)`
    - the `NHAMCS_DATA_PATH` environment variable
+   - `data/local/ed2022-stata.dta` (the git-ignored drop location — the usual
+     place to put the file)
    - a documented sibling location under `ML_Dataset_Audit\`
 4. Run the notebook top to bottom. It now contains Part 1 (sections 1–8) and
    the Part 2 comparison (sections P2.1–P2.12).
@@ -168,8 +188,9 @@ read-only, excluded by `.gitignore`, and never committed.
 dataset discoverable as above):
 
 ```bash
-python -m pytest -q                  # full suite: 52 unit + 3 integration tests
-python -m pytest -m integration -q   # 3 real-dataset integration tests
+python -m pytest -q                  # full suite: 64 unit + 5 integration tests
+python -m pytest -m integration -q   # 5 real-dataset integration tests
+                                     # (without the dataset they skip; 64 unit still run)
 python -m scripts.run_decision_tree  # single-model run through the shared evaluator
 python -m scripts.fold_metrics       # per-fold table + CSV for the Decision Tree
 python -m scripts.generate_gini_hand_calculation   # regenerates docs/gini_hand_calculation.md

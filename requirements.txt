@@ -1,17 +1,28 @@
-# NHAMCS-TriageML — Assignment 1 requirements
+# NHAMCS-TriageML — core requirements (single authoritative manifest)
 #
 # Scope: data loading + integrity verification + leakage-free preprocessing
-# pipeline + EDA. Deliberately minimal. Later parts may extend this file when
-# the dependency is genuinely needed.
+# pipeline + EDA + Part 2/3 evaluation framework + the test suite.
+# Deliberately minimal. Optional model libraries are NOT installed here; they
+# have their own manifests (Issue #23):
+#   requirements-xgboost.txt    XGBoost (Issue #13)
+#   requirements-torch-cpu.txt  PyTorch, CPU-only wheels (Issue #16)
 #
-# Bounds are derived from the versions actually observed and used to execute the
-# deliverables (Windows 11, CPython 3.13.5 x64), not from assumption.
-# Lower bounds = observed version. Upper bounds are the next major release, so
-# a major-version bump fails loudly instead of silently changing behaviour.
+# Supported Python: CPython 3.13.x. The reference/tested environment for every
+# result in this repository is Windows 11, CPython 3.13.5 x64 (docs/environment.md).
+# 3.13.5 is the tested reference patch release, not the only accepted one.
 #
-# Verified installed and used to run notebooks/01_assignment1_part1_eda_and_pipeline.ipynb:
-#   pandas 2.3.0 · numpy 2.2.6 · scikit-learn 1.7.0 · scipy 1.15.3
-#   matplotlib 3.11.2 · nbformat 5.11.1 · nbclient 0.11.0 · ipykernel 7.4.0
+# Bounds follow one rule: lower bound = the version observed in the reference
+# environment; upper bound = the next major release, so a major-version bump
+# fails loudly instead of silently changing behaviour.
+#
+# Reference environment (CPython 3.13.5, Windows 11 x64) — installed and verified:
+#   pandas 2.3.3 · numpy 2.5.4 · scikit-learn 1.9.1 · scipy 1.18.1
+#   matplotlib 3.11.2 · jupyterlab 4.6.4 · ipykernel 7.4.0 · nbformat 5.11.1
+#   nbclient 0.11.0 · pytest 9.1.1
+#
+# The Part 1 notebook was originally executed under pandas 2.3.0, numpy 2.2.6,
+# scikit-learn 1.7.0, scipy 1.15.3; its committed outputs now come from a
+# re-run under the reference environment above (Python 3.13.5, sklearn 1.9.1).
 #
 # NOTE: matplotlib 3.11 is required, not optional. The four EDA figures are part
 # of the Part 1 deliverable, and the notebook asserts on the transformed array,
@@ -21,34 +32,39 @@
 # StratifiedGroupKFold fold assignments can differ between scikit-learn versions
 # even with shuffle=True and random_state=42 unchanged, so the Part 2 fold-level
 # results in docs/decision_tree_results.md were produced under 1.9.1 and should
-# be read against this pin. The Part 1 notebook outputs noted above were
-# verified under 1.7.0 and are unaffected.
+# be read against this pin. This pin also governs the Part 3 nested-tuning folds
+# (docs/nested_tuning_protocol.md).
+#
+# Interpretability (Issue #23 decision): scikit-learn-native tools only
+# (sklearn.inspection.permutation_importance and friends). SHAP and LIME are
+# deliberately NOT dependencies yet.
 
 # --- Core data handling -----------------------------------------------------
-pandas>=2.3,<3          # observed 2.3.0  - read_stata for the .dta file
-numpy>=2.2,<3           # observed 2.2.6
+pandas>=2.3.3,<3         # observed 2.3.3  - read_stata for the .dta file
+numpy>=2.5.4,<3          # observed 2.5.4
 
 # --- Pipeline / validation --------------------------------------------------
-scikit-learn==1.9.1     # pinned 1.9.1  - Pipeline, ColumnTransformer,
-                         #                 SimpleImputer, OneHotEncoder,
-                         #                 StratifiedGroupKFold (Part 2)
-scipy>=1.15,<2          # observed 1.15.3 - chi-square tests for the
-                         #                 missingness/target-association work
+scikit-learn==1.9.1      # pinned 1.9.1   - Pipeline, ColumnTransformer,
+                         #                  SimpleImputer, OneHotEncoder,
+                         #                  StratifiedGroupKFold (Part 2/3),
+                         #                  PCA, KMeans, permutation_importance
+scipy>=1.18.1,<2         # observed 1.18.1 - chi-square tests for the
+                         #                  missingness/target-association work
 
 # --- Notebook execution and figures ----------------------------------------
-matplotlib>=3.9         # observed 3.11.2 - EDA figures (Assignment 1 requires
-                         #                 at least three visualisations)
-jupyterlab>=4.3         # notebook server for reviewing the deliverable
-ipykernel>=6.29         # observed 7.4.0  - kernel the notebook executes under
-nbformat>=5.10          # observed 5.11.1 - notebook read/write
-nbclient>=0.10          # observed 0.11.0 - headless execution, so the notebook
-                         #                 ships with outputs already populated
+matplotlib>=3.11.2,<4    # observed 3.11.2 - EDA figures (Assignment 1 requires
+                         #                  at least three visualisations)
+jupyterlab>=4.6.4,<5     # observed 4.6.4  - notebook server for review
+ipykernel>=7.4.0,<8      # observed 7.4.0  - kernel the notebook executes under
+nbformat>=5.11.1,<6      # observed 5.11.1 - notebook read/write
+nbclient>=0.11.0,<1      # observed 0.11.0 - headless execution, so the notebook
+                         #                  ships with outputs already populated
 
-# --- Development / test (Part 2, Issue #1) -----------------------------------
-# Install with the rest of the project, or separately for CI:
-#   pip install -r requirements.txt
+# --- Development / test (Issue #1) ------------------------------------------
+# Install with the rest of the project:
+#   python -m pip install -r requirements.txt
 # Run the suite from the repository root:
-#   python -m pytest
+#   python -m pytest -q               # 69 tests: 64 unit + 5 integration
 # Real-dataset integration (requires the pinned NHAMCS file):
-#   python -m pytest -m integration
-pytest>=8.0             # observed 9.1.1 - unit + integration tests under tests/
+#   python -m pytest -m integration -q
+pytest>=9.1.1,<10        # observed 9.1.1  - unit + integration tests under tests/

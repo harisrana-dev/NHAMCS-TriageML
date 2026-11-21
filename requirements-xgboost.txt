@@ -1,0 +1,18 @@
+# NHAMCS-TriageML — optional XGBoost manifest (Issue #13 scope, Issue #23 split)
+#
+# Install ON TOP of the core manifest, in a separate step:
+#   python -m pip install -r requirements.txt
+#   python -m pip install -r requirements-xgboost.txt
+#
+# Deliberately separate from requirements.txt so a fresh clone reproduces the
+# core suite without pulling in model libraries, and separate from
+# requirements-torch-cpu.txt so the PyTorch package index never applies to
+# XGBoost installs (Issue #23 decision).
+#
+# Verified in the reference environment (Windows 11, CPython 3.13.5 x64):
+#   - pip check: no broken requirements
+#   - xgboost 3.4.1 imports alongside scikit-learn 1.9.1
+#   - XGBClassifier fits a synthetic 5-class problem (macro-F1 0.766)
+#   - StratifiedGroupKFold from scikit-learn 1.9.1 still works in-process
+# Python floor: xgboost 3.4.1 requires Python >=3.12 (satisfied by 3.13.x).
+xgboost==3.4.1
