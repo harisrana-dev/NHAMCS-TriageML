@@ -1,0 +1,27 @@
+# NHAMCS-TriageML — optional PyTorch CPU-only manifest (Issue #16 scope, Issue #23 split)
+#
+# Install ON TOP of the core manifest, in a separate step:
+#   python -m pip install -r requirements.txt
+#   python -m pip install -r requirements-torch-cpu.txt
+#
+# CPU-only wheels come from the official PyTorch index declared below; the
+# local version segment (+cpu) guarantees a CPU build is selected rather than
+# a CUDA one. This index is scoped to THIS file only — it must never appear in
+# requirements.txt or requirements-xgboost.txt (Issue #23 decision).
+#
+# Platform scope: the +cpu pin resolves on Windows x64 and Linux x86_64/aarch64
+# (runtime-verified on Windows 11 x64 only). It does NOT resolve on macOS,
+# where the index publishes torch-2.15.0-cp313-cp313-macosx_14_0_arm64.whl
+# with no +cpu segment, so `torch==2.15.0+cpu` matches no macOS wheel.
+# macOS is therefore unsupported by this manifest — see docs/environment.md
+# for the separate, unverified macOS route.
+#
+# Verified in the reference environment (Windows 11, CPython 3.13.5 x64):
+#   - pip check: no broken requirements
+#   - torch 2.15.0+cpu imports alongside scikit-learn 1.9.1
+#   - torch.cuda.is_available() is False (CPU build, as intended)
+#   - a minimal nn.Linear classifier trains on synthetic 5-class data
+#     (loss 1.65 -> 0.78 over 200 steps, train acc 0.706)
+# Python floor: torch 2.15.0 requires Python >=3.11 (satisfied by 3.13.x).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu

@@ -3,13 +3,15 @@
 ## Reproduction
 
 Run from the repository root with the verified NHAMCS 2022 Stata file available
-at the path in `NHAMCS_DATA_PATH`. The raw file is not committed.
+through the documented path precedence (`docs/environment.md`); the usual drop
+location is `data/local/ed2022-stata.dta`, or set `NHAMCS_DATA_PATH` explicitly.
+The raw file is not committed.
 
-Environment used: CPython 3.12.10, pandas 2.3.3, NumPy 2.5.4,
-scikit-learn 1.9.1, SciPy 1.18.1, pytest 9.1.1.
+Environment used for this experiment (provenance): CPython 3.12.10,
+pandas 2.3.3, NumPy 2.5.4, scikit-learn 1.9.1, SciPy 1.18.1, pytest 9.1.1.
+The current supported environment is specified in `docs/environment.md`.
 
 ```powershell
-$env:NHAMCS_DATA_PATH = (Join-Path (Get-Location) 'ed2022-stata.dta')
 python -m pytest -q
 @'
 from src.data.dataset import load_raw_dataset
@@ -44,9 +46,12 @@ It loaded as 16,025 rows × 913 columns. The modelling cohort had 10,207 visits
 from 147 hospitals, with `IMMEDR` counts 1: 139, 2: 1,595, 3: 5,340, 4: 2,826,
 and 5: 307.
 
-Validation on this branch: `python -m pytest -q` — **55 passed**. With
-`NHAMCS_DATA_PATH` set to the repository-root dataset,
-`python -m pytest -m integration -q` — **3 passed, 52 deselected**.
+Validation at the time of this experiment: `python -m pytest -q` — **55 passed**,
+with `python -m pytest -m integration -q` — **3 passed, 52 deselected**. The
+suite has since grown (Issues #11, #23): today the same commands give **69
+passed** and **5 passed, 64 deselected** with the dataset present; without it
+the 5 integration tests skip and the 64 unit tests still pass
+(`docs/environment.md`).
 
 ## Cross-validation summary
 

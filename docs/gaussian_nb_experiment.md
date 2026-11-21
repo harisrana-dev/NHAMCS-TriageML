@@ -274,6 +274,8 @@ python -m pytest -m integration -q
 
 Both commands were executed on 2026-10-19 in the environment recorded above;
 the integration tests resolved the real pinned dataset (they were not skipped).
+Those counts are historical: the suite has since grown (Issues #11, #23) to
+69 tests — 64 unit + 5 integration (`docs/environment.md`).
 
 ## Constraints honoured
 
