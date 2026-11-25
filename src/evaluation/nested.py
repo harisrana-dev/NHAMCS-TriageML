@@ -67,6 +67,7 @@ class NestedSpec:
     param_grid: Mapping[str, Sequence[Any]]
     condition: str = "full"
     weight_policy: WeightPolicy | None = None
+    weight_policy_candidates: Sequence[WeightPolicy | None] | None = None
 
 
 @dataclass(frozen=True)
@@ -293,6 +294,7 @@ def run_nested_evaluation(
     error_value = _validate_error_score(error_score)
 
     columns, base_pipeline, parameter_grid = _validate_spec(spec)
+    weight_policies = _weight_policy_candidates(spec)
     final_step_name = _pipeline_final_step_name(base_pipeline)
     scorer = scoring if scoring is not None else make_macro_f1_scorer()
     if not callable(scorer):
@@ -321,7 +323,12 @@ def run_nested_evaluation(
     inner_search_frames: list[pd.DataFrame] = []
     fitted_pipelines: dict[int, Pipeline] = {}
 
-    n_candidates = len(parameter_grid)
+    candidates = [
+        (params, policy)
+        for params in parameter_grid
+        for policy in weight_policies
+    ]
+    n_candidates = len(candidates)
     if n_candidates == 0:
         raise ValueError("parameter_grid produced no candidates.")
 
@@ -371,7 +378,7 @@ def run_nested_evaluation(
 
         candidate_summary: list[dict[str, Any]] = []
         candidate_rows: list[list[dict[str, Any]]] = []
-        for candidate_id, params in enumerate(parameter_grid):
+        for candidate_id, (params, weight_policy) in enumerate(candidates):
             scores: list[float] = []
             rows_for_candidate: list[dict[str, Any]] = []
             for inner in inner_folds:
@@ -382,7 +389,7 @@ def run_nested_evaluation(
                     pipeline = clone(base_pipeline).set_params(**params)
                     fit_y = inputs.y.iloc[inner.train_positions]
                     fit_params = build_weighted_fit_params(
-                        spec.weight_policy,
+                        weight_policy,
                         fit_y,
                         final_step_name=final_step_name,
                     )
@@ -414,6 +421,7 @@ def run_nested_evaluation(
                         "outer_fold": fold.fold_id,
                         "candidate_id": candidate_id,
                         "params": _params_json(params),
+                        "weight_policy": _weight_policy_name(weight_policy),
                         "inner_fold": inner.fold_id,
                         "n_inner_train": int(inner.train_positions.size),
                         "n_inner_val": int(inner.val_positions.size),
@@ -431,6 +439,7 @@ def run_nested_evaluation(
                 {
                     "candidate_id": candidate_id,
                     "params": dict(params),
+                    "weight_policy": weight_policy,
                     "mean_score": mean_score,
                 }
             )
@@ -440,6 +449,7 @@ def run_nested_evaluation(
         )
         best = candidate_summary[best_index]
         best_params = dict(best["params"])
+        best_weight_policy = best["weight_policy"]
         best_score = float(best["mean_score"])
 
         if verbose:
@@ -451,7 +461,7 @@ def run_nested_evaluation(
         final_pipeline = clone(base_pipeline).set_params(**best_params)
         outer_fit_y = inputs.y.iloc[outer_train_pos]
         final_fit_params = build_weighted_fit_params(
-            spec.weight_policy,
+            best_weight_policy,
             outer_fit_y,
             final_step_name=final_step_name,
         )
@@ -512,9 +522,7 @@ def run_nested_evaluation(
                 outer_predictions=y_pred,
                 outer_probabilities=proba_aligned,
                 fitted_pipeline=retained,
-                weight_policy_name=(
-                    spec.weight_policy.name if spec.weight_policy is not None else "none"
-                ),
+                weight_policy_name=_weight_policy_name(best_weight_policy),
             )
         )
 
@@ -525,9 +533,7 @@ def run_nested_evaluation(
             "best_candidate_id": int(best["candidate_id"]),
             "best_inner_score": best_score,
             "best_params": _params_json(best_params),
-            "weight_policy": (
-                spec.weight_policy.name if spec.weight_policy is not None else "none"
-            ),
+            "weight_policy": _weight_policy_name(best_weight_policy),
         }
         for key, value in best_params.items():
             best_row[f"param__{key}"] = value
@@ -580,8 +586,13 @@ def run_nested_evaluation(
         "scoring": getattr(scorer, "__name__", type(scorer).__name__),
         "error_score": error_score if error_value == "raise" else error_value,
         "weight_policy": (
-            spec.weight_policy.name if spec.weight_policy is not None else "none"
+            _weight_policy_name(spec.weight_policy)
+            if spec.weight_policy_candidates is None
+            else "inner_cv_selection"
         ),
+        "weight_policy_candidates": [
+            _weight_policy_name(policy) for policy in weight_policies
+        ],
         "group_column": "HOSPCODE",
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
@@ -685,6 +696,36 @@ def _validate_spec(
                 "Use pipeline-prefixed names such as 'estimator__max_depth'."
             )
     return columns, base_pipeline, ParameterGrid(spec.param_grid)
+
+
+def _weight_policy_candidates(
+    spec: NestedSpec,
+) -> tuple[WeightPolicy | None, ...]:
+    if spec.weight_policy_candidates is None:
+        policies = (spec.weight_policy,)
+    else:
+        if spec.weight_policy is not None:
+            raise ValueError(
+                "Set either weight_policy or weight_policy_candidates, not both."
+            )
+        policies = tuple(spec.weight_policy_candidates)
+        if not policies:
+            raise ValueError("weight_policy_candidates must not be empty.")
+
+    names: list[str] = []
+    for policy in policies:
+        if policy is not None and not isinstance(policy, WeightPolicy):
+            raise TypeError(
+                "weight_policy_candidates entries must be WeightPolicy or None."
+            )
+        names.append(_weight_policy_name(policy))
+    if len(set(names)) != len(names):
+        raise ValueError("Weight-policy candidate names must be unique.")
+    return policies
+
+
+def _weight_policy_name(policy: WeightPolicy | None) -> str:
+    return policy.name if policy is not None else "none"
 
 
 def _params_json(params: Mapping[str, Any]) -> str:

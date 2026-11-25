@@ -143,6 +143,18 @@ weighted_spec = NestedSpec(
 When `weight_policy` is `None`, no `sample_weight` is passed. The weight policy
 name is recorded in `best_params` and `diagnostics` for every run.
 
+A specification may instead provide `weight_policy_candidates`, a sequence of
+`WeightPolicy` values and/or `None`. The harness evaluates each weighting
+strategy as an inner-search candidate alongside each parameter-grid candidate,
+and refits the inner-selected strategy on the complete outer-training
+partition. This allows models without native `class_weight` support to compare
+unweighted and inverse-frequency-weighted fits without consulting outer test
+results. The selected policy is recorded for every outer fold; candidate policy
+names are included in `inner_search` and run metadata.
+Candidate order is parameter-grid order followed by the declared policy order;
+the existing first-maximum tie break therefore prefers the first policy when
+scores tie.
+
 ## Determinism and failure handling
 
 - The harness is sequential: `search_n_jobs` is accepted for API clarity but

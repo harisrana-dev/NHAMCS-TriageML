@@ -1,0 +1,106 @@
+{
+  "dataset": {
+    "filename": "ed2022-stata.dta",
+    "sha256": "0E00CD5AEA4511CD619F7AF1E0DC2F6825F111B7C87D3EBBB1358410A4C881C2",
+    "shape": [
+      16025,
+      913
+    ],
+    "size_bytes": 37720094
+  },
+  "platform": "Windows-11-10.0.22621-SP0",
+  "protocol": {
+    "family_winner_inner_scores": {
+      "adaboost": [
+        0.24221221446778016,
+        0.252380663026325,
+        0.2687766362351665,
+        0.25089165581086476,
+        0.23829266765294174
+      ],
+      "random_forest": [
+        0.31733122815768217,
+        0.3449889131355796,
+        0.34400299295990994,
+        0.3380456055976729,
+        0.33254840701397775
+      ]
+    },
+    "family_winner_rule": "For full-condition runs, select the model with the highest mean across outer folds of its best inner-CV macro-F1; ties are resolved by ENSEMBLE_MODEL_IDS order. Select no_rfv only for that predeclared winner.",
+    "groups": "HOSPCODE",
+    "inner_folds": 3,
+    "inner_splitter": "StratifiedGroupKFold",
+    "no_rfv_family_winner": "random_forest",
+    "outer_folds": 5,
+    "outer_splitter": "StratifiedGroupKFold",
+    "parallelism": 1,
+    "seed": 42,
+    "selection_metric": "fixed-label macro-F1 (labels 1-5, zero_division=0)"
+  },
+  "runs": {
+    "adaboost/full": {
+      "condition": "full",
+      "error_score": "raise",
+      "group_column": "HOSPCODE",
+      "model": "adaboost",
+      "n_candidates": 8,
+      "n_inner_splits": 3,
+      "n_outer_splits": 5,
+      "numpy_version": "2.5.4",
+      "pandas_version": "2.3.3",
+      "python_version": "3.12.10",
+      "random_state": 42,
+      "scikit_learn_version": "1.9.1",
+      "scoring": "_Scorer",
+      "search_n_jobs": 1,
+      "total_fits": 125,
+      "weight_policy": "inner_cv_selection",
+      "weight_policy_candidates": [
+        "none",
+        "inverse_frequency"
+      ]
+    },
+    "random_forest/full": {
+      "condition": "full",
+      "error_score": "raise",
+      "group_column": "HOSPCODE",
+      "model": "random_forest",
+      "n_candidates": 8,
+      "n_inner_splits": 3,
+      "n_outer_splits": 5,
+      "numpy_version": "2.5.4",
+      "pandas_version": "2.3.3",
+      "python_version": "3.12.10",
+      "random_state": 42,
+      "scikit_learn_version": "1.9.1",
+      "scoring": "_Scorer",
+      "search_n_jobs": 1,
+      "total_fits": 125,
+      "weight_policy": "none",
+      "weight_policy_candidates": [
+        "none"
+      ]
+    },
+    "random_forest/no_rfv": {
+      "condition": "no_rfv",
+      "error_score": "raise",
+      "group_column": "HOSPCODE",
+      "model": "random_forest",
+      "n_candidates": 8,
+      "n_inner_splits": 3,
+      "n_outer_splits": 5,
+      "numpy_version": "2.5.4",
+      "pandas_version": "2.3.3",
+      "python_version": "3.12.10",
+      "random_state": 42,
+      "scikit_learn_version": "1.9.1",
+      "scoring": "_Scorer",
+      "search_n_jobs": 1,
+      "total_fits": 125,
+      "weight_policy": "none",
+      "weight_policy_candidates": [
+        "none"
+      ]
+    }
+  }
+}

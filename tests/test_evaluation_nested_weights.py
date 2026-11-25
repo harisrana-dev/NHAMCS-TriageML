@@ -122,6 +122,38 @@ def test_without_policy_no_sample_weights_are_passed(synthetic_inputs) -> None:
     assert set(result.best_params["weight_policy"]) == {"none"}
 
 
+def test_weight_policies_are_compared_inside_inner_cv(synthetic_inputs) -> None:
+    FIT_RECORDS.clear()
+    result = run_nested_evaluation(
+        synthetic_inputs,
+        NestedSpec(
+            name="recording",
+            estimator_factory=RecordingClassifier,
+            param_grid={"estimator__label": [1]},
+            weight_policy_candidates=(
+                INVERSE_FREQUENCY_WEIGHT_POLICY,
+                None,
+            ),
+        ),
+    )
+
+    assert len(result.inner_search) == 5 * 3 * 2
+    assert set(result.inner_search["weight_policy"]) == {
+        "inverse_frequency",
+        "none",
+    }
+    assert set(result.best_params["weight_policy"]) == {"inverse_frequency"}
+    assert all(
+        fold.weight_policy_name == "inverse_frequency"
+        for fold in result.fold_results
+    )
+    assert len(FIT_RECORDS) == 5 * (3 * 2 + 1)
+    assert sum(weights is not None for _, weights in FIT_RECORDS) == 5 * (3 + 1)
+    for y_fit, weights in FIT_RECORDS:
+        if weights is not None:
+            np.testing.assert_allclose(weights, inverse_frequency_weights(y_fit))
+
+
 def test_estimator_native_class_weight_is_an_ordinary_grid_param(
     synthetic_inputs,
 ) -> None:
