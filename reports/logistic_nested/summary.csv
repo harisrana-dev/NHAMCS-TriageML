@@ -1,0 +1,4 @@
+model,condition,n_folds,macro_f1_mean,macro_f1_std,macro_f1_n_valid,accuracy_mean,accuracy_std,accuracy_n_valid,balanced_accuracy_mean,balanced_accuracy_std,balanced_accuracy_n_valid,roc_auc_mean,roc_auc_std,roc_auc_n_valid
+ridge_logistic,full,5,0.3485317737,0.01831174111,5,0.577431489,0.01515752684,5,0.3294544395,0.01347991457,5,0.7353712995,0.01176661106,5
+lasso_logistic,full,5,0.3486663271,0.01839774687,5,0.5781156939,0.0158957254,5,0.3296674575,0.01345392238,5,0.7354080183,0.01152047107,5
+elastic_net_logistic,full,5,0.3489448316,0.01849105223,5,0.5782125931,0.01594058859,5,0.3298247073,0.01351165595,5,0.7354186254,0.01154279684,5

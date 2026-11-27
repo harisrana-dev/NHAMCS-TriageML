@@ -1,0 +1,16 @@
+model,condition,fold,best_candidate_id,best_inner_score,best_params,weight_policy,param__estimator__logisticregression__C,param__estimator__logisticregression__l1_ratio
+ridge_logistic,full,0,4,0.3319358971,"{""estimator__logisticregression__C"": 100.0}",none,100,
+ridge_logistic,full,1,4,0.3356683751,"{""estimator__logisticregression__C"": 100.0}",none,100,
+ridge_logistic,full,2,3,0.3167143354,"{""estimator__logisticregression__C"": 10.0}",none,10,
+ridge_logistic,full,3,4,0.3535324386,"{""estimator__logisticregression__C"": 100.0}",none,100,
+ridge_logistic,full,4,3,0.3366961028,"{""estimator__logisticregression__C"": 10.0}",none,10,
+lasso_logistic,full,0,4,0.3295087932,"{""estimator__logisticregression__C"": 100.0}",none,100,
+lasso_logistic,full,1,4,0.3356683495,"{""estimator__logisticregression__C"": 100.0}",none,100,
+lasso_logistic,full,2,4,0.3169972527,"{""estimator__logisticregression__C"": 100.0}",none,100,
+lasso_logistic,full,3,3,0.3539136684,"{""estimator__logisticregression__C"": 10.0}",none,10,
+lasso_logistic,full,4,3,0.3419676023,"{""estimator__logisticregression__C"": 10.0}",none,10,
+elastic_net_logistic,full,0,13,0.332065686,"{""estimator__logisticregression__C"": 100.0, ""estimator__logisticregression__l1_ratio"": 0.5}",none,100,0.5
+elastic_net_logistic,full,1,13,0.3357186941,"{""estimator__logisticregression__C"": 100.0, ""estimator__logisticregression__l1_ratio"": 0.5}",none,100,0.5
+elastic_net_logistic,full,2,13,0.3169972527,"{""estimator__logisticregression__C"": 100.0, ""estimator__logisticregression__l1_ratio"": 0.5}",none,100,0.5
+elastic_net_logistic,full,3,10,0.3542260246,"{""estimator__logisticregression__C"": 10.0, ""estimator__logisticregression__l1_ratio"": 0.5}",none,10,0.5
+elastic_net_logistic,full,4,11,0.3421000109,"{""estimator__logisticregression__C"": 10.0, ""estimator__logisticregression__l1_ratio"": 0.9}",none,10,0.9
