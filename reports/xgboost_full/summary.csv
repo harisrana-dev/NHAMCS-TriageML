@@ -1,0 +1,2 @@
+model,condition,n_folds,macro_f1_mean,macro_f1_std,macro_f1_n_valid,accuracy_mean,accuracy_std,accuracy_n_valid,balanced_accuracy_mean,balanced_accuracy_std,balanced_accuracy_n_valid,roc_auc_mean,roc_auc_std,roc_auc_n_valid
+xgboost,full,5,0.32595806812588013,0.013312837865134375,5,0.43376280370862963,0.015513269240109887,5,0.40442814683169814,0.027563034255260646,5,0.7118820947919213,0.004600083927336004,5

@@ -1,0 +1,6 @@
+model,condition,fold,best_candidate_id,best_inner_score,best_params,weight_policy,param__estimator__max_depth
+xgboost,full,0,3,0.3098423996761549,"{""estimator__max_depth"": 5}",inverse_frequency,5
+xgboost,full,1,3,0.3221908317183919,"{""estimator__max_depth"": 5}",inverse_frequency,5
+xgboost,full,2,3,0.3205288617026933,"{""estimator__max_depth"": 5}",inverse_frequency,5
+xgboost,full,3,3,0.32388223936999894,"{""estimator__max_depth"": 5}",inverse_frequency,5
+xgboost,full,4,3,0.31647849452033,"{""estimator__max_depth"": 5}",inverse_frequency,5

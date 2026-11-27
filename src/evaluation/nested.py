@@ -68,7 +68,7 @@ class NestedSpec:
     condition: str = "full"
     weight_policy: WeightPolicy | None = None
     weight_policy_candidates: Sequence[WeightPolicy | None] | None = None
-
+    weight_policies: Sequence[WeightPolicy | None] | None = None
 
 @dataclass(frozen=True)
 class NestedInnerFold:
@@ -330,7 +330,7 @@ def run_nested_evaluation(
     ]
     n_candidates = len(candidates)
     if n_candidates == 0:
-        raise ValueError("parameter_grid produced no candidates.")
+        raise ValueError("No parameter/weight-policy candidates were generated.")
 
     for fold in folds:
         outer_train_pos = _validate_positions(
@@ -455,7 +455,8 @@ def run_nested_evaluation(
         if verbose:
             print(
                 f"outer_fold={fold.fold_id} best_candidate={best['candidate_id']} "
-                f"best_inner_score={best_score:.6f}"
+                f"best_inner_score={best_score:.6f} "
+                f"weight_policy={best_weight_policy.name if best_weight_policy else 'none'}"
             )
 
         final_pipeline = clone(base_pipeline).set_params(**best_params)
@@ -586,11 +587,17 @@ def run_nested_evaluation(
         "scoring": getattr(scorer, "__name__", type(scorer).__name__),
         "error_score": error_score if error_value == "raise" else error_value,
         "weight_policy": (
-            _weight_policy_name(spec.weight_policy)
-            if spec.weight_policy_candidates is None
-            else "inner_cv_selection"
+            best_param_rows[0]["weight_policy"]
+            if len({row["weight_policy"] for row in best_param_rows}) == 1
+            else "varies_by_outer_fold"
         ),
         "weight_policy_candidates": [
+            _weight_policy_name(policy) for policy in weight_policies
+        ],
+        "selected_weight_policies": sorted(
+            {row["weight_policy"] for row in best_param_rows}
+        ),
+        "candidate_weight_policies": [
             _weight_policy_name(policy) for policy in weight_policies
         ],
         "group_column": "HOSPCODE",
@@ -684,6 +691,7 @@ def _validate_spec(
     ft.leakage_checks(columns)
     if not isinstance(spec.param_grid, Mapping) or not spec.param_grid:
         raise ValueError("param_grid must be a non-empty mapping.")
+    _weight_policy_candidates(spec)
 
     base_pipeline = ft.build_pipeline(estimator=estimator, columns=columns)
     valid_params = set(base_pipeline.get_params(deep=True))
@@ -701,24 +709,39 @@ def _validate_spec(
 def _weight_policy_candidates(
     spec: NestedSpec,
 ) -> tuple[WeightPolicy | None, ...]:
-    if spec.weight_policy_candidates is None:
+    if spec.weight_policy is not None and not isinstance(
+        spec.weight_policy, WeightPolicy
+    ):
+        raise TypeError("weight_policy must be a WeightPolicy or None.")
+
+    if spec.weight_policy_candidates is not None and spec.weight_policies is not None:
+        raise ValueError("Use only one weight-policy candidate field.")
+
+    supplied = (
+        spec.weight_policy_candidates
+        if spec.weight_policy_candidates is not None
+        else spec.weight_policies
+    )
+
+    if supplied is None:
         policies = (spec.weight_policy,)
     else:
         if spec.weight_policy is not None:
-            raise ValueError(
-                "Set either weight_policy or weight_policy_candidates, not both."
-            )
-        policies = tuple(spec.weight_policy_candidates)
-        if not policies:
-            raise ValueError("weight_policy_candidates must not be empty.")
+            raise ValueError("Use a policy sequence or weight_policy, not both.")
+        if (
+            not isinstance(supplied, Sequence)
+            or isinstance(supplied, (str, bytes))
+            or not supplied
+        ):
+            raise ValueError("Weight-policy candidates must be a non-empty sequence.")
+        policies = tuple(supplied)
 
-    names: list[str] = []
+    names = []
     for policy in policies:
         if policy is not None and not isinstance(policy, WeightPolicy):
-            raise TypeError(
-                "weight_policy_candidates entries must be WeightPolicy or None."
-            )
+            raise TypeError("Weight-policy candidates must contain WeightPolicy or None.")
         names.append(_weight_policy_name(policy))
+
     if len(set(names)) != len(names):
         raise ValueError("Weight-policy candidate names must be unique.")
     return policies
