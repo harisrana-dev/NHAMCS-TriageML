@@ -57,6 +57,13 @@ from src.evaluation.nested import (
     make_nested_inner_folds,
     run_nested_evaluation,
 )
+from src.evaluation.ensemble_models import (
+    ENSEMBLE_MODEL_FACTORIES,
+    ENSEMBLE_MODEL_IDS,
+    make_ensemble_estimator,
+    make_ensemble_spec,
+    select_full_condition_winner,
+)
 from src.evaluation.splits import (
     GroupedFold,
     fold_diagnostics,
@@ -100,4 +107,9 @@ __all__ = [
     "make_nested_inner_folds",
     "build_weighted_fit_params",
     "run_nested_evaluation",
+    "ENSEMBLE_MODEL_IDS",
+    "ENSEMBLE_MODEL_FACTORIES",
+    "make_ensemble_estimator",
+    "make_ensemble_spec",
+    "select_full_condition_winner",
 ]
