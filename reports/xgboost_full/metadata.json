@@ -10,6 +10,13 @@
   "scoring": "_Scorer",
   "error_score": "raise",
   "weight_policy": "inverse_frequency",
+  "weight_policy_candidates": [
+    "none",
+    "inverse_frequency"
+  ],
+  "selected_weight_policies": [
+    "inverse_frequency"
+  ],
   "candidate_weight_policies": [
     "none",
     "inverse_frequency"
@@ -32,8 +39,5 @@
     ],
     "n_estimators": 100,
     "learning_rate": 0.05
-  },
-  "selected_weight_policies": [
-    "inverse_frequency"
-  ]
+  }
 }
