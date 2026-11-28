@@ -171,3 +171,39 @@ def test_estimator_native_class_weight_is_an_ordinary_grid_param(
         "estimator__class_weight" in json.loads(row)
         for row in result.inner_search["params"]
     )
+
+
+def test_candidate_weight_policies_are_compared_within_inner_cv(
+    synthetic_inputs,
+) -> None:
+    FIT_RECORDS.clear()
+    spec = NestedSpec(
+        name="candidate_weights",
+        estimator_factory=RecordingClassifier,
+        param_grid={"estimator__label": [1, 3]},
+        weight_policies=(None, INVERSE_FREQUENCY_WEIGHT_POLICY),
+    )
+
+    result = run_nested_evaluation(synthetic_inputs, spec)
+
+    assert len(result.inner_search) == 5 * 3 * 2 * 2
+    assert set(result.inner_search["weight_policy"]) == {
+        "none",
+        "inverse_frequency",
+    }
+
+    assert len(FIT_RECORDS) == 5 * (3 * 2 * 2 + 1)
+    for y_used, weights in FIT_RECORDS:
+        if weights is not None:
+            np.testing.assert_allclose(
+                weights,
+                inverse_frequency_weights(y_used),
+            )
+
+    assert set(result.best_params["weight_policy"]).issubset(
+        {"none", "inverse_frequency"}
+    )
+    assert set(result.metadata["candidate_weight_policies"]) == {
+        "none",
+        "inverse_frequency",
+    }

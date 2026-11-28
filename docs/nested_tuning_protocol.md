@@ -110,24 +110,29 @@ Part 2 `EvaluationResult`. It contains:
 
 ## Sample weights
 
-Sample weighting is optional. Part 3's default policy is inverse frequency:
+Sample weighting is optional. The harness supports both a fixed policy and
+selection among multiple candidate policies.
+
+Part 3 provides inverse-frequency weighting:
 
 ```
 w_c = n / (K * n_c)
 ```
 
-where `n` is the number of rows in the current fit partition, `K = 5` is the
-number of labels, and `n_c` is the count of class `c` in that partition. The
-policy is implemented by `inverse_frequency_weights` and exposed as
-`INVERSE_FREQUENCY_WEIGHT_POLICY`.
+where `n` is the number of rows in the current fit partition, `K = 5` is
+the number of labels, and `n_c` is the count of class `c` in that
+partition. The policy is implemented by `inverse_frequency_weights` and
+exposed as `INVERSE_FREQUENCY_WEIGHT_POLICY`.
 
-Weights are recomputed for every fit from the rows actually used for that fit:
+Weights are recomputed for every fit from only the rows used for that fit:
 an inner-training partition during inner search, or the full outer-training
 partition during the final refit. Outer test labels and features are never
-used by the policy. `build_weighted_fit_params` routes the weights to the
-pipeline's final estimator as `estimator__sample_weight`; no preprocessor step
-receives them. A `WeightPolicy` may override `fit_param` for a different
-estimator-level argument, but pipeline paths are rejected.
+used by the policy. `build_weighted_fit_params` routes weights to the
+pipeline's final estimator as `estimator__sample_weight`; no preprocessor
+step receives them. A `WeightPolicy` may override `fit_param` for a
+different estimator-level argument, but pipeline paths are rejected.
+
+A fixed policy can be supplied through `weight_policy`:
 
 ```python
 from src.evaluation import INVERSE_FREQUENCY_WEIGHT_POLICY, NestedSpec
@@ -140,8 +145,30 @@ weighted_spec = NestedSpec(
 )
 ```
 
-When `weight_policy` is `None`, no `sample_weight` is passed. The weight policy
-name is recorded in `best_params` and `diagnostics` for every run.
+Alternatively, callers can compare candidate policies through
+`weight_policies`. The unweighted option is represented by `None`:
+
+```python
+spec = NestedSpec(
+    name="xgboost",
+    estimator_factory=make_xgboost_estimator,
+    param_grid={"estimator__max_depth": [3, 5]},
+    condition="full",
+    weight_policies=(None, INVERSE_FREQUENCY_WEIGHT_POLICY),
+)
+```
+
+Each parameter combination is evaluated with each candidate weighting policy
+using the same inner folds. The policy and hyperparameters are selected
+together by mean inner macro-F1. For every inner fit, weights are calculated
+only from that inner training partition. The selected policy is then
+recomputed from the complete outer-training partition for the outer refit.
+The outer test fold is not involved in either selection or weight calculation.
+
+When `weight_policy` is `None` and no candidate list is supplied, the
+fit is unweighted. The selected policy is recorded per outer fold in
+`best_params` and the nested results. Metadata records the candidate
+policies and the selected policy or policies.
 
 A specification may instead provide `weight_policy_candidates`, a sequence of
 `WeightPolicy` values and/or `None`. The harness evaluates each weighting

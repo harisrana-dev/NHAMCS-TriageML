@@ -1,0 +1,43 @@
+{
+  "model": "xgboost",
+  "condition": "full",
+  "random_state": 42,
+  "n_outer_splits": 5,
+  "n_inner_splits": 3,
+  "n_candidates": 4,
+  "total_fits": 65,
+  "search_n_jobs": 1,
+  "scoring": "_Scorer",
+  "error_score": "raise",
+  "weight_policy": "inverse_frequency",
+  "weight_policy_candidates": [
+    "none",
+    "inverse_frequency"
+  ],
+  "selected_weight_policies": [
+    "inverse_frequency"
+  ],
+  "candidate_weight_policies": [
+    "none",
+    "inverse_frequency"
+  ],
+  "group_column": "HOSPCODE",
+  "python_version": "3.14.2",
+  "numpy_version": "2.5.5",
+  "pandas_version": "2.3.3",
+  "scikit_learn_version": "1.9.1",
+  "xgboost_version": "3.4.1",
+  "estimator_configuration": {
+    "objective": "multi:softprob",
+    "num_class": 5,
+    "eval_metric": "mlogloss",
+    "tree_method": "hist",
+    "n_jobs": 1,
+    "tested_max_depth": [
+      3,
+      5
+    ],
+    "n_estimators": 100,
+    "learning_rate": 0.05
+  }
+}
