@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import platform
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -64,8 +65,10 @@ def _confusion_rows(results, inputs) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
-def write_results(results, inputs, *, metadata: dict[str, Any]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def write_results(
+    results, inputs, *, metadata: dict[str, Any], output_dir: Path = OUTPUT_DIR
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     tables = {
         "fold_metrics": [result.fold_metrics for result in results],
         "summary": [result.summary for result in results],
@@ -77,7 +80,7 @@ def write_results(results, inputs, *, metadata: dict[str, Any]) -> None:
     }
     for name, frames in tables.items():
         pd.concat(frames, ignore_index=True).to_csv(
-            OUTPUT_DIR / f"{name}.csv",
+            output_dir / f"{name}.csv",
             index=False,
             float_format="%.10g",
         )
@@ -94,7 +97,7 @@ def write_results(results, inputs, *, metadata: dict[str, Any]) -> None:
                 }
             )
     pd.DataFrame(pooled_class_rows).to_csv(
-        OUTPUT_DIR / "pooled_per_class_metrics.csv",
+        output_dir / "pooled_per_class_metrics.csv",
         index=False,
         float_format="%.10g",
     )
@@ -105,7 +108,7 @@ def write_results(results, inputs, *, metadata: dict[str, Any]) -> None:
         frame.insert(0, "model", result.model)
         diagnostics.append(frame)
     pd.concat(diagnostics, ignore_index=True).to_csv(
-        OUTPUT_DIR / "nested_fold_diagnostics.csv",
+        output_dir / "nested_fold_diagnostics.csv",
         index=False,
     )
     outer_diagnostics = []
@@ -115,14 +118,14 @@ def write_results(results, inputs, *, metadata: dict[str, Any]) -> None:
         frame.insert(0, "model", result.model)
         outer_diagnostics.append(frame)
     pd.concat(outer_diagnostics, ignore_index=True).to_csv(
-        OUTPUT_DIR / "outer_fold_diagnostics.csv",
+        output_dir / "outer_fold_diagnostics.csv",
         index=False,
     )
     _confusion_rows(results, inputs).to_csv(
-        OUTPUT_DIR / "confusion_matrices.csv",
+        output_dir / "confusion_matrices.csv",
         index=False,
     )
-    (OUTPUT_DIR / "metadata.json").write_text(
+    (output_dir / "metadata.json").write_text(
         json.dumps(metadata, indent=2, sort_keys=True, default=_json_default)
         + "\n",
         encoding="utf-8",
